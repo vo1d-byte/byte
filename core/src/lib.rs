@@ -32,3 +32,5 @@ pub mod process;
 
 pub mod pty;
 pub mod pty_jni;
+
+pub mod terminal_emulator;
