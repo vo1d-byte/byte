@@ -36,10 +36,15 @@ impl LspFrameDecoder {
                 break;
             };
             let header = std::str::from_utf8(&self.buffer[..header_end]).map_err(|_| LspError::InvalidUtf8)?;
-            let length = header.lines().find_map(|line| {
-                let (key, value) = line.split_once(':')?;
-                if key.trim().eq_ignore_ascii_case("Content-Length") { value.trim().parse::<usize>().ok() } else { None }
-            }).ok_or(LspError::MissingContentLength)?;
+            let mut content_length = None;
+            for line in header.lines() {
+                let (key, value) = line.split_once(':').ok_or(LspError::InvalidContentLength)?;
+                if key.trim().eq_ignore_ascii_case("Content-Length") {
+                    if content_length.is_some() { return Err(LspError::InvalidContentLength); }
+                    content_length = Some(value.trim().parse::<usize>().map_err(|_| LspError::InvalidContentLength)?);
+                }
+            }
+            let length = content_length.ok_or(LspError::MissingContentLength)?;
             if length > self.max_payload { return Err(LspError::PayloadTooLarge); }
             let body_start = header_end + 4;
             if self.buffer.len() < body_start + length { break; }
@@ -125,7 +130,7 @@ mod tests {
         assert_eq!(LspFrameDecoder::new(1024).push(&bytes).unwrap().len(), 2);
     }
     #[test]
-    fn enforces_payload_limit() {
+    fn rejects_invalid_content_length() {\n        let frame = b"Content-Length: nope\\r\\n\\r\\n{}";\n        assert_eq!(LspFrameDecoder::new(1024).push(frame), Err(LspError::InvalidContentLength));\n    }\n    #[test]\n    fn enforces_payload_limit() {
         let frame = encode_message(&json!({"data":"0123456789"}));
         assert_eq!(LspFrameDecoder::new(2).push(&frame), Err(LspError::PayloadTooLarge));
     }
