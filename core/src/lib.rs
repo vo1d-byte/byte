@@ -1,10 +1,7 @@
-//! Byte IDE native core.
-//!
-//! The editor document model is independent from Android UI state. Positions are
-//! Unicode scalar-value (Rust char) offsets; adapters must translate UTF-16 editor
-//! offsets at the Kotlin/JNI boundary.
+//! Byte IDE native core and JNI bridge.
 
 pub mod editor;
+pub mod jni_bridge;
 
 pub const CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -18,7 +15,7 @@ mod tests {
 
     #[test]
     fn reports_version() {
-        assert_eq!(CORE_VERSION, "0.2.0");
+        assert_eq!(CORE_VERSION, "0.3.0");
         assert!(status_message().contains("Byte Core"));
     }
 }
