@@ -6,10 +6,10 @@
 
 use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{mpsc, Mutex};
 use std::thread;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -158,6 +158,7 @@ impl Drop for ProcessManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
 
     #[test]
     fn rejects_missing_working_directory() {
@@ -181,13 +182,16 @@ mod tests {
         spec.args = vec!["-c".into(), "printf byte-process-ok".into()];
         let id = manager.spawn(spec).unwrap();
         let mut output = String::new();
-        for _ in 0..100 {
+        let mut exited = false;
+        for _ in 0..200 {
             for event in manager.poll() {
-                if let ProcessEvent::Output { process_id, text, .. } = event {
-                    if process_id == id { output.push_str(&text); }
+                match event {
+                    ProcessEvent::Output { process_id, text, .. } if process_id == id => output.push_str(&text),
+                    ProcessEvent::Exited { process_id, .. } if process_id == id => exited = true,
+                    _ => {}
                 }
             }
-            if !manager.active_process_ids().contains(&id) { break; }
+            if exited && output.contains("byte-process-ok") { break; }
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
         assert!(output.contains("byte-process-ok"), "captured: {output:?}");
