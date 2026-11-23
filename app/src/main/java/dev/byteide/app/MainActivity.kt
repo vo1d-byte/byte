@@ -63,9 +63,16 @@ private fun EditorFirstWorkspace() {
     val context = LocalContext.current
     val workspaceRoot = remember { File(context.filesDir, "workspace").apply { mkdirs() } }
     val toolchainsRoot = remember { File(context.filesDir, "toolchains").apply { mkdirs() } }
+    val cacheRoot = remember { File(context.cacheDir, "toolchain-downloads").apply { mkdirs() } }
     val lspWorkspace = remember {
         LspWorkspaceManager(toolchainsRoot = toolchainsRoot, workspaceRoot = workspaceRoot)
     }
+    val toolchainInstaller = remember(toolchainsRoot, cacheRoot, lspWorkspace) {
+        ToolchainInstaller(toolchainsRoot, cacheRoot, lspWorkspace)
+    }
+    val languageCatalog = remember(context) { runCatching { LanguagePackageRegistry.load(context) } }
+    var showToolchains by remember { mutableStateOf(false) }
+    DisposableEffect(toolchainInstaller) { onDispose { toolchainInstaller.close() } }
     val documentUri = remember(file, workspaceRoot) { File(workspaceRoot, file).toURI().toString() }
     val lspController = remember(editorSession, lspWorkspace, documentUri) {
         LspEditorController(editorSession, lspWorkspace, documentUri, "kotlin")
@@ -200,13 +207,14 @@ private fun EditorFirstWorkspace() {
                 horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (actionLayer > 0) {
                     val actions = if (actionLayer == 1) listOf("Run", "Find", "Undo", "More") else
-                        listOf("Debug", "Files", "Git", "Replace", "Definition", "Comment", "Duplicate", "Format", "Back")
+                        listOf("Debug", "Files", "Languages", "Git", "Replace", "Definition", "Comment", "Duplicate", "Format", "Back")
                     actions.forEach { action ->
                         FilledTonalButton(onClick = {
                             when (action) {
                                 "More" -> actionLayer = 2
                                 "Back" -> actionLayer = 1
                                 "Files" -> showFiles = true
+                                "Languages" -> showToolchains = true
                                 "Run" -> { outputText = "Run requested. Build runner is not connected yet."; activeTab = OutputTab.OUTPUT; panelSize = PanelSize.NORMAL }
                                 "Debug" -> { activeTab = OutputTab.DEBUG; panelSize = PanelSize.NORMAL }
                                 else -> outputText = "$action command selected."
@@ -226,6 +234,18 @@ private fun EditorFirstWorkspace() {
                 title = { Text("Files") },
                 text = { Text("Project file explorer will appear here when a workspace is opened.") },
                 confirmButton = { TextButton(onClick = { showFiles = false }) { Text("Close") } })
+        }
+        if (showToolchains) {
+            languageCatalog.onSuccess { catalog ->
+                ToolchainManagerDialog(catalog, toolchainInstaller) { showToolchains = false }
+            }.onFailure { catalogError ->
+                AlertDialog(
+                    onDismissRequest = { showToolchains = false },
+                    title = { Text("Language catalog unavailable") },
+                    text = { Text(catalogError.message ?: "Unable to load language catalog.") },
+                    confirmButton = { TextButton(onClick = { showToolchains = false }) { Text("Close") } }
+                )
+            }
         }
     }
 }
