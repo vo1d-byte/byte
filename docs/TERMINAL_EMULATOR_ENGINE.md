@@ -29,3 +29,11 @@ validation, and real-device tests remain follow-up work.
 
 Do not decode PTY chunks as UTF-8 before parsing them: multibyte characters and
 escape sequences can be split between reads.
+
+
+## Compose rendering surface
+
+The Android output panel now uses a dedicated `TerminalScreen` composable with
+a dark terminal surface, monospace text, automatic scroll-to-bottom, and text
+selection/copy support. This is still a text-stream renderer: it does not yet
+consume native screen snapshots or render per-cell ANSI attributes/cursor state.
