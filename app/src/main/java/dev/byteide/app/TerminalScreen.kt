@@ -99,19 +99,20 @@ fun TerminalScreen(
                 val cell = cells.optJSONObject(column) ?: continue
                 val x = column * cellWidth
                 if (x > size.width) break
-                val fg = gridColor(cell.optJSONArray("f"), TERMINAL_FOREGROUND)
-                val bg = gridColor(cell.optJSONArray("b"), TERMINAL_BACKGROUND)
+                var fg = gridColor(cell.optJSONArray("f"), TERMINAL_FOREGROUND)
+                var bg = gridColor(cell.optJSONArray("b"), TERMINAL_BACKGROUND)
+                val flags = cell.optInt("a", 0)
+                if (flags and 8 != 0) { val swap = fg; fg = bg; bg = swap }
                 if (bg != TERMINAL_BACKGROUND) {
                     paint.color = bg
                     paint.style = Paint.Style.FILL
                     canvas.drawRect(x, y, x + cellWidth + 0.5f, y + cellHeight, paint)
                 }
-                val flags = cell.optInt("a", 0)
                 paint.color = fg
                 paint.style = Paint.Style.FILL
                 paint.typeface = Typeface.create(
                     Typeface.MONOSPACE,
-                    if (flags and 1 != 0) Typeface.BOLD else Typeface.NORMAL
+                    (if (flags and 1 != 0) Typeface.BOLD else Typeface.NORMAL) or\n                        (if (flags and 2 != 0) Typeface.ITALIC else Typeface.NORMAL)
                 )
                 val text = cell.optString("t", " ")
                 if (text.isNotEmpty() && text != " ") {
