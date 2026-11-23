@@ -99,7 +99,7 @@ private fun EditorFirstWorkspace() {
     val terminalSession = remember(workspaceRoot) {
         TerminalSession(
             workingDirectory = workspaceRoot,
-            onOutput = { chunk -> outputText = (outputText + chunk).takeLast(24000) },
+            onOutput = { snapshot -> outputText = snapshot },
             onState = { terminalState = it }
         )
     }
