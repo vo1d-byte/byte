@@ -324,3 +324,13 @@ dirty tracking and touch/clipboard interaction remain future work. See
 
 - [x] Wide-Unicode continuation cells are excluded from copied text; backgrounds and selection spans cover both columns.
 - [ ] Bidirectional logical-to-visual hit-testing and complete grapheme-aware selection.
+
+## Android build validation
+
+The repository runs an Android debug build and unit-test task through GitHub
+Actions on pushes and pull requests targeting `main`. The workflow uses JDK
+17, Android SDK, and Gradle 8.9, and uploads the debug APK when the build passes.
+
+The Rust `core` crate is currently outside the Gradle project graph. A passing
+Android Gradle build therefore validates the Kotlin/Android application only;
+it does not compile or test the Rust native core.
