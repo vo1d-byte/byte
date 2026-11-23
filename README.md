@@ -280,3 +280,8 @@ The Terminal output panel now uses a dedicated Compose terminal surface with
 scroll-to-bottom and selectable monospace output. It remains a text-stream view;
 native VT screen snapshots, per-cell colors, cursor rendering, and PTY-to-parser
 integration are not yet complete.
+
+
+The Android terminal output surface supports ANSI SGR styling for standard/bright
+colors, 256-color and true-color foreground/background, bold, italic, and underline.
+It remains a stream renderer rather than a complete VT screen emulator.
