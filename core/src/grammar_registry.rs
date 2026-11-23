@@ -11,6 +11,9 @@ use tree_sitter::{Language, Parser, Tree};
 pub enum LanguageId {
     Kotlin,
     Rust,
+    Python,
+    JavaScript,
+    TypeScript,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -58,6 +61,30 @@ const LANGUAGES: &[LanguageDescriptor] = &[
         line_comment: "//",
         block_comment: Some(("/*", "*/")),
     },
+    LanguageDescriptor {
+        id: LanguageId::Python,
+        name: "python",
+        display_name: "Python",
+        extensions: &["py", "pyi"],
+        line_comment: "#",
+        block_comment: None,
+    },
+    LanguageDescriptor {
+        id: LanguageId::JavaScript,
+        name: "javascript",
+        display_name: "JavaScript",
+        extensions: &["js", "mjs", "cjs", "jsx"],
+        line_comment: "//",
+        block_comment: Some(("/*", "*/")),
+    },
+    LanguageDescriptor {
+        id: LanguageId::TypeScript,
+        name: "typescript",
+        display_name: "TypeScript",
+        extensions: &["ts", "tsx"],
+        line_comment: "//",
+        block_comment: Some(("/*", "*/")),
+    },
 ];
 
 pub fn languages() -> &'static [LanguageDescriptor] {
@@ -70,6 +97,9 @@ pub fn language_by_name(name: &str) -> Option<&'static LanguageDescriptor> {
         "kt" | "kts" => "kotlin",
         "rs" => "rust",
         "rsrc" => "rust",
+        "py" | "pyi" => "python",
+        "js" | "mjs" | "cjs" | "jsx" => "javascript",
+        "ts" | "tsx" => "typescript",
         _ => normalized.as_str(),
     };
     LANGUAGES.iter().find(|item| item.name == normalized)
@@ -77,6 +107,7 @@ pub fn language_by_name(name: &str) -> Option<&'static LanguageDescriptor> {
 
 pub fn language_for_path(path: &str) -> Option<&'static LanguageDescriptor> {
     let extension = path.rsplit('.').next()?;
+    let extension = extension.to_ascii_lowercase();
     LANGUAGES.iter().find(|item| item.extensions.iter().any(|ext| *ext == extension))
 }
 
@@ -84,6 +115,9 @@ pub fn grammar(id: LanguageId) -> Language {
     match id {
         LanguageId::Kotlin => tree_sitter_kotlin_ng::LANGUAGE.into(),
         LanguageId::Rust => tree_sitter_rust::LANGUAGE.into(),
+        LanguageId::Python => tree_sitter_python::LANGUAGE.into(),
+        LanguageId::JavaScript => tree_sitter_javascript::LANGUAGE.into(),
+        LanguageId::TypeScript => tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
     }
 }
 
@@ -109,12 +143,18 @@ mod tests {
     fn resolves_language_names_and_aliases() {
         assert_eq!(language_by_name("Kotlin").unwrap().id, LanguageId::Kotlin);
         assert_eq!(language_by_name("rs").unwrap().id, LanguageId::Rust);
+        assert_eq!(language_by_name("py").unwrap().id, LanguageId::Python);
+        assert_eq!(language_by_name("tsx").unwrap().id, LanguageId::TypeScript);
     }
 
     #[test]
     fn detects_language_from_file_extension() {
         assert_eq!(language_for_path("src/main.rs").unwrap().id, LanguageId::Rust);
         assert_eq!(language_for_path("build.gradle.kts").unwrap().id, LanguageId::Kotlin);
+        assert_eq!(language_for_path("src/app.py").unwrap().id, LanguageId::Python);
+        assert_eq!(language_for_path("web/main.js").unwrap().id, LanguageId::JavaScript);
+        assert_eq!(language_for_path("web/component.tsx").unwrap().id, LanguageId::TypeScript);
+        assert_eq!(language_for_path("web/MAIN.JS").unwrap().id, LanguageId::JavaScript);
         assert!(language_for_path("README").is_none());
     }
 
@@ -124,6 +164,12 @@ mod tests {
         let rust = parse("rust", "fn greet() -> &'static str { \"hello\" }").unwrap();
         assert!(!kotlin.root_node().has_error());
         assert!(!rust.root_node().has_error());
+        let python = parse("python", "def greet():\\n    return \\"hello\\"").unwrap();
+        let javascript = parse("javascript", "function greet() { return \\"hello\\"; }").unwrap();
+        let typescript = parse("typescript", "const greet = (name: string): string => name;").unwrap();
+        assert!(!python.root_node().has_error());
+        assert!(!javascript.root_node().has_error());
+        assert!(!typescript.root_node().has_error());
     }
 
     #[test]
