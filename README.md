@@ -285,3 +285,10 @@ integration are not yet complete.
 The Android terminal output surface supports ANSI SGR styling for standard/bright
 colors, 256-color and true-color foreground/background, bold, italic, and underline.
 It remains a stream renderer rather than a complete VT screen emulator.
+
+
+The native PTY path now preserves raw output bytes and feeds them into a
+per-session Rust VT parser. JNI returns the current screen text to Android, and
+terminal resizing updates both the PTY and parser. This first integration exports
+plain screen contents only; cursor drawing and per-cell style/color export are
+still pending, and the pipe fallback is not a full VT terminal.
