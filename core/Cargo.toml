@@ -1,6 +1,6 @@
 [package]
 name = "byte_core"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "Native systems core and text editor engine for Byte IDE"
 
@@ -9,3 +9,4 @@ crate-type = ["rlib", "cdylib"]
 
 [dependencies]
 ropey = "1.6"
+jni = "0.21"
