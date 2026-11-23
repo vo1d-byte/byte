@@ -156,3 +156,11 @@ Contributions are welcome. Please open an issue before large architectural chang
 
 No license has been selected yet. Until a license is added, all rights remain with the copyright holder; do not assume the code is available under an open-source license.
 \n\n## LSP runtime\n\nThe Android process owner and protocol framing foundation are documented in [LSP Runtime](docs/LSP_RUNTIME.md). Language-server installation, workspace discovery, full lifecycle wiring, and device validation remain pending.\n
+
+### LSP intelligence
+- [x] Typed Kotlin facade for completion, hover, definition, references, rename, formatting, and publishDiagnostics parsing.
+- [ ] Connect LSP notifications and request callbacks to active editor tabs and Compose UI.
+- [ ] Debounce/cancel requests, suppress stale responses, and negotiate server capabilities/position encoding.
+- [ ] Apply WorkspaceEdit and TextEdit as version-checked undoable editor transactions.
+
+See [LSP Editor Intelligence](docs/LSP_INTELLIGENCE.md).
