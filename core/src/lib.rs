@@ -27,3 +27,5 @@ mod tests {
 
 pub mod lsp;
 pub mod toolchain;
+
+pub mod process;
