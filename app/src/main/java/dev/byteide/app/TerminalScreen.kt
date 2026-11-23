@@ -182,9 +182,10 @@ fun TerminalScreen(
             }
         }
 
-        val first = if (startPoint != null && endPoint != null &&
-            (startPoint.y < endPoint.y || (startPoint.y == endPoint.y && startPoint.x <= endPoint.x))) startPoint else endPoint
-        val last = if (first === startPoint) endPoint else startPoint
+        val forward = startPoint != null && endPoint != null &&
+            (startPoint.y < endPoint.y || (startPoint.y == endPoint.y && startPoint.x <= endPoint.x))
+        val first = if (forward) startPoint else endPoint
+        val last = if (forward) endPoint else startPoint
         if (first != null && last != null && grid.length() > 0) {
             val firstRow = (first.y / cellHeight).toInt().coerceIn(0, grid.length() - 1)
             val lastRow = (last.y / cellHeight).toInt().coerceIn(firstRow, grid.length() - 1)
@@ -227,15 +228,19 @@ fun TerminalScreen(
                 }
                 val cw = measurePaint.measureText("M").coerceAtLeast(1f)
                 val ch = (measurePaint.fontMetrics.descent - measurePaint.fontMetrics.ascent).coerceAtLeast(1f)
-                val sr = (startPoint.y / ch).toInt().coerceIn(0, rows.length() - 1)
-                val er = (endPoint.y / ch).toInt().coerceIn(0, rows.length() - 1)
-                val sc = (startPoint.x / cw).toInt().coerceAtLeast(0)
-                val ec = (endPoint.x / cw).toInt().coerceAtLeast(0)
+                val forward = startPoint.y < endPoint.y ||
+                    (startPoint.y == endPoint.y && startPoint.x <= endPoint.x)
+                val first = if (forward) startPoint else endPoint
+                val last = if (forward) endPoint else startPoint
+                val firstRow = (first.y / ch).toInt().coerceIn(0, rows.length() - 1)
+                val lastRow = (last.y / ch).toInt().coerceIn(firstRow, rows.length() - 1)
+                val firstColumn = (first.x / cw).toInt().coerceAtLeast(0)
+                val lastColumn = (last.x / cw).toInt().coerceAtLeast(0)
                 val output = StringBuilder()
-                for (r in minOf(sr, er)..maxOf(sr, er)) {
+                for (r in firstRow..lastRow) {
                     val cells = rows.optJSONArray(r) ?: continue
-                    val from = if (r == sr) sc else 0
-                    val to = if (r == er) ec else cells.length() - 1
+                    val from = if (r == firstRow) firstColumn else 0
+                    val to = if (r == lastRow) lastColumn else cells.length() - 1
                     val left = minOf(from, to).coerceIn(0, cells.length())
                     val right = (maxOf(from, to) + 1).coerceIn(left, cells.length())
                     for (c in left until right) output.append(cells.optJSONObject(c)?.optString("t", " ") ?: " ")
