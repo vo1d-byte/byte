@@ -156,10 +156,10 @@ private fun EditorFirstWorkspace() {
                         else if (activeTab == OutputTab.TERMINAL) {
                             when (token) {
                                 "Ctrl+C" -> terminalSession.sendInterruptByte()
-                                "Tab" -> terminalSession.writeInput("\\t")
-                                "↑" -> terminalSession.writeInput("\\u001b[A")
-                                "↓" -> terminalSession.writeInput("\\u001b[B")
-                                "Esc" -> terminalSession.writeInput("\\u001b")
+                                "Tab" -> terminalSession.writeInput("\t")
+                                "↑" -> terminalSession.writeInput("\u001b[A")
+                                "↓" -> terminalSession.writeInput("\u001b[B")
+                                "Esc" -> terminalSession.writeInput("\u001b")
                                 else -> terminalSession.writeInput(token)
                             }
                         } else {
