@@ -95,3 +95,18 @@ including color backgrounds and a cursor outline.
   source of truth in native mode. The plain-text fallback remains intentionally basic.
 - The renderer has not yet been built or exercised on Android hardware; Cargo/Gradle
   compilation and VT compatibility testing remain required.
+
+
+## Terminal polling performance pass
+
+The JNI grid polling path now sends one initial blank frame and skips JSON
+serialization on subsequent idle polling ticks when the PTY has produced no
+new bytes. This reduces avoidable JSON allocation and JNI string traffic while
+the shell is idle. It is not yet a dirty-cell protocol: every poll that contains
+new PTY bytes still serializes the full active grid.
+
+The Kotlin source line-break literals and Rust VT test escape sequences were
+also corrected during this pass. This change has been source-verified on GitHub,
+but Cargo tests, Gradle compilation, Android device rendering, Unicode wide-cell
+behavior, cursor blinking, and cell-based selection/copy have not been run or
+completed.
