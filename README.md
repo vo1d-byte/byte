@@ -321,3 +321,6 @@ changed-cell deltas with cursor metadata. Android merges deltas into its retaine
 grid. The current Rust diff still scans the full grid to detect changes; direct
 dirty tracking and touch/clipboard interaction remain future work. See
 [Terminal Emulator Engine](docs/TERMINAL_EMULATOR_ENGINE.md).
+
+- [x] Wide-Unicode continuation cells are excluded from copied text; backgrounds and selection spans cover both columns.
+- [ ] Bidirectional logical-to-visual hit-testing and complete grapheme-aware selection.
