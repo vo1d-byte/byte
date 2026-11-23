@@ -5,17 +5,16 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 
 /**
- * View-owned editor state. Output-panel visibility and device orientation must
- * never recreate this object: keeping it stable preserves caret and selection.
- *
- * TextFieldValue uses UTF-16 offsets, matching Android/Compose APIs. The Rust
- * document engine uses Unicode scalar offsets; the JNI adapter must translate.
+ * Stable view-owned state for a single editor tab. Compose offsets are UTF-16;
+ * native Rust document offsets are Unicode scalar values (code points).
  */
 @Stable
 class EditorSession(
     initialText: String,
     val filePath: String
-) {
+) : AutoCloseable {
+    private val nativeDocument = NativeEditorDocument(initialText)
+
     var value: TextFieldValue = TextFieldValue(
         text = initialText,
         selection = TextRange(initialText.length)
@@ -31,12 +30,68 @@ class EditorSession(
     var firstVisibleLine: Int = 0
         private set
 
+    val usesNativeEngine: Boolean get() = nativeDocument.isNative
+
     fun applyValue(next: TextFieldValue) {
         if (next.text != value.text) {
+            syncIncrementalEdit(value.text, next.text)
             revision += 1
             isDirty = true
         }
         value = next
+        nativeDocument.setSelection(
+            utf16ToCodePoint(value.text, value.selection.start),
+            utf16ToCodePoint(value.text, value.selection.end)
+        )
+    }
+
+    private fun syncIncrementalEdit(old: String, new: String) {
+        if (!nativeDocument.isNative) return
+
+        var prefix = 0
+        val maxPrefix = minOf(old.length, new.length)
+        while (prefix < maxPrefix && old[prefix] == new[prefix]) prefix++
+        // Never split a UTF-16 surrogate pair.
+        if (prefix > 0 && prefix < old.length && old[prefix].isLowSurrogate()) prefix--
+        if (prefix > 0 && prefix < new.length && new[prefix].isLowSurrogate()) prefix--
+
+        var oldSuffix = old.length
+        var newSuffix = new.length
+        while (oldSuffix > prefix && newSuffix > prefix &&
+            old[oldSuffix - 1] == new[newSuffix - 1]) {
+            oldSuffix--
+            newSuffix--
+        }
+        if (oldSuffix < old.length && old[oldSuffix].isLowSurrogate()) oldSuffix++
+        if (newSuffix < new.length && new[newSuffix].isLowSurrogate()) newSuffix++
+
+        val startCp = utf16ToCodePoint(old, prefix)
+        val endCp = utf16ToCodePoint(old, oldSuffix)
+        nativeDocument.replace(startCp, endCp, new.substring(prefix, newSuffix))
+    }
+
+    fun undo(): Boolean {
+        if (!nativeDocument.isNative) return false
+        val updated = nativeDocument.undo(value.text)
+        if (updated != value.text) {
+            value = TextFieldValue(updated, TextRange(updated.length))
+            revision++
+            isDirty = true
+            return true
+        }
+        return false
+    }
+
+    fun redo(): Boolean {
+        if (!nativeDocument.isNative) return false
+        val updated = nativeDocument.redo(value.text)
+        if (updated != value.text) {
+            value = TextFieldValue(updated, TextRange(updated.length))
+            revision++
+            isDirty = true
+            return true
+        }
+        return false
     }
 
     fun markSaved() {
@@ -49,11 +104,21 @@ class EditorSession(
 
     fun restoreSelection(selection: TextRange) {
         val end = value.text.length
-        value = value.copy(
-            selection = TextRange(
-                selection.start.coerceIn(0, end),
-                selection.end.coerceIn(0, end)
-            )
+        val safe = TextRange(
+            selection.start.coerceIn(0, end),
+            selection.end.coerceIn(0, end)
+        )
+        value = value.copy(selection = safe)
+        nativeDocument.setSelection(
+            utf16ToCodePoint(value.text, safe.start),
+            utf16ToCodePoint(value.text, safe.end)
         )
     }
+
+    override fun close() {
+        nativeDocument.close()
+    }
+
+    private fun utf16ToCodePoint(text: String, offset: Int): Int =
+        text.codePointCount(0, offset.coerceIn(0, text.length))
 }
