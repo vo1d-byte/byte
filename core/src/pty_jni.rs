@@ -4,7 +4,7 @@ use crate::terminal_emulator::TerminalEmulator;
 use jni::objects::{JClass, JString};
 use jni::sys::{jboolean, jint, jlong, jstring};
 use jni::JNIEnv;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Mutex, OnceLock};
@@ -12,6 +12,7 @@ use std::sync::{Mutex, OnceLock};
 static NEXT_PTY: AtomicI64 = AtomicI64::new(1);
 static PTYS: OnceLock<Mutex<HashMap<i64, PtySession>>> = OnceLock::new();
 static SCREENS: OnceLock<Mutex<HashMap<i64, TerminalEmulator>>> = OnceLock::new();
+static GRID_INITIALIZED: OnceLock<Mutex<HashSet<i64>>> = OnceLock::new();
 
 fn sessions() -> &'static Mutex<HashMap<i64, PtySession>> {
     PTYS.get_or_init(|| Mutex::new(HashMap::new()))
@@ -79,12 +80,19 @@ pub extern "system" fn Java_dev_byteide_app_NativeTerminalBridge_nativePollGrid(
     let output = sessions().lock().ok()
         .and_then(|mut map| map.get_mut(&(handle as i64)).map(|session| session.poll().output))
         .unwrap_or_default();
-    // Avoid serializing the entire screen on idle polling ticks.
-    if output.is_empty() { return make_string(&mut env, String::new()); }
+    let id = handle as i64;
+    let first_snapshot = initialized_grids().lock()
+        .map(|seen| !seen.contains(&id)).unwrap_or(true);
+    // The initial blank frame is sent once; subsequent idle ticks send no JSON.
+    if output.is_empty() && !first_snapshot {
+        return make_string(&mut env, String::new());
+    }
     let Ok(mut map) = screens().lock() else { return make_string(&mut env, "{}".to_string()); };
-    if let Some(screen) = map.get_mut(&(handle as i64)) {
+    if let Some(screen) = map.get_mut(&id) {
         screen.process(&output);
-        make_string(&mut env, screen.grid_json())
+        let snapshot = screen.grid_json();
+        if let Ok(mut seen) = initialized_grids().lock() { seen.insert(id); }
+        make_string(&mut env, snapshot)
     } else {
         make_string(&mut env, "{}".to_string())
     }
@@ -140,6 +148,6 @@ pub extern "system" fn Java_dev_byteide_app_NativeTerminalBridge_nativeClose(
 ) {
     if let Ok(mut map) = sessions().lock() {
         if let Some(mut session) = map.remove(&(handle as i64)) { session.terminate(); }
-        if let Ok(mut screen_map) = screens().lock() { screen_map.remove(&(handle as i64)); }
+        if let Ok(mut screen_map) = screens().lock() { screen_map.remove(&(handle as i64)); }\n        if let Ok(mut seen) = initialized_grids().lock() { seen.remove(&(handle as i64)); }
     }
 }
