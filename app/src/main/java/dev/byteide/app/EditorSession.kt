@@ -17,9 +17,12 @@ class EditorSession(
     val filePath: String
 ) : AutoCloseable {
     private val nativeDocument = NativeEditorDocument(initialText)
-    private val syntaxDocument = NativeKotlinSyntax(initialText)
+    private val syntaxDocument = NativeSyntaxDocument(filePath, initialText)
 
     var syntaxSpans: List<EditorSyntaxSpan> by mutableStateOf(syntaxDocument.spans())
+        private set
+
+    var syntaxDiagnostics: List<EditorSyntaxDiagnostic> by mutableStateOf(syntaxDocument.diagnostics())
         private set
 
     var value: TextFieldValue = TextFieldValue(
@@ -79,6 +82,7 @@ class EditorSession(
         val endByte = old.substring(0, oldSuffix).toByteArray(Charsets.UTF_8).size
         syntaxDocument.replace(startByte, endByte, new.substring(prefix, newSuffix))
         syntaxSpans = syntaxDocument.spans()
+        syntaxDiagnostics = syntaxDocument.diagnostics()
     }
 
     fun undo(): Boolean {
