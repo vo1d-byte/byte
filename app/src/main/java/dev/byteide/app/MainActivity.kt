@@ -69,7 +69,6 @@ private fun EditorFirstWorkspace() {
     var error by remember { mutableStateOf(false) }
     var terminalInput by remember { mutableStateOf("") }
     var outputText by remember { mutableStateOf("Byte workspace ready. Open a project to begin.") }
-    var dirty by remember { mutableStateOf(false) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Canvas)) {
         val landscape = maxWidth > maxHeight
@@ -80,7 +79,7 @@ private fun EditorFirstWorkspace() {
                         outputText, terminalInput, { terminalInput = it }, landscape = true)
                 }
                 Column(Modifier.weight(1f).fillMaxHeight()) {
-                    FileTabs(file, dirty, { file = it; dirty = false }, { dirty = true })
+                    FileTabs(file, dirty, { file = it }, {})
                     EditorArea(editorValue, { next ->
                         editorValue = next
                         editorSession.applyValue(next)
@@ -106,11 +105,15 @@ private fun EditorFirstWorkspace() {
                         modifier = Modifier.fillMaxWidth().weight(if (panelSize == PanelSize.EXPANDED) 0.8f else 0.25f))
                 }
                 FileTabs(file, dirty, { file = it; dirty = false }, { dirty = true })
-                EditorArea(code, { code = it; dirty = true }, Modifier.weight(1f))
+                EditorArea(editorValue, { next -> editorValue = next; editorSession.applyValue(next) }, Modifier.weight(1f))
                 if (showCursorPad) CursorPad(onClose = { showCursorPad = false })
                 else CodeKeyRow(activeTab == OutputTab.TERMINAL, { token ->
                     if (token == "Cursor") showCursorPad = true
-                    else { code += token; dirty = true }
+                    else {
+                        val next = editorValue.text + token
+                        editorValue = TextFieldValue(next, TextRange(next.length))
+                        editorSession.applyValue(editorValue)
+                    }
                 })
                 Spacer(Modifier.height(5.dp))
             }
