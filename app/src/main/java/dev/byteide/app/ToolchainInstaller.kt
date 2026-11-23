@@ -175,9 +175,11 @@ class ToolchainInstaller(
     }
 
     private fun safeChild(root: File, relative: String): File {
-        require(relative.isNotBlank() && !relative.startsWith("/") && !relative.startsWith("\\")) { "Invalid archive path" }
-        val normalized = relative.replace('\\', '/')
-        require(normalized.split('/').none { it == ".." || it.isBlank() }) { "Path traversal rejected" }
+        require(relative.isNotBlank() && !relative.startsWith("/") && !relative.startsWith("\\\\")) { "Invalid archive path" }
+        // ZIP directory entries conventionally end in '/'; allow that trailing separator only.
+        val normalized = relative.replace('\\\\', '/').trimEnd('/')
+        require(normalized.isNotBlank())
+        require(normalized.split('/').none { it == ".." || it.isBlank() || it == "." }) { "Path traversal rejected" }
         val child = File(root, normalized).canonicalFile
         require(child.toPath().startsWith(root.canonicalFile.toPath())) { "Path escaped installation directory" }
         return child
