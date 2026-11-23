@@ -112,7 +112,8 @@ The Android workspace follows the supplied 14-screen mobile IDE brief: editor-fi
 ### Workspace and editing
 - [ ] Project creation and workspace persistence.
 - [ ] File explorer, file operations, search, and tabs.
-- [ ] Editor engine, syntax highlighting, and diagnostics.
+- [x] Initial Compose editor rendering with line-number gutter and Kotlin lexical coloring.
+- [ ] Incremental syntax parsing, diagnostics, and language-aware rendering.
 - [ ] LSP client and language server lifecycle management.
 
 ### Execution and language ecosystems
