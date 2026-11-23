@@ -1,6 +1,9 @@
 package dev.byteide.app
 
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 
@@ -14,6 +17,10 @@ class EditorSession(
     val filePath: String
 ) : AutoCloseable {
     private val nativeDocument = NativeEditorDocument(initialText)
+    private val syntaxDocument = NativeKotlinSyntax(initialText)
+
+    var syntaxSpans: List<EditorSyntaxSpan> by mutableStateOf(syntaxDocument.spans())
+        private set
 
     var value: TextFieldValue = TextFieldValue(
         text = initialText,
@@ -46,7 +53,7 @@ class EditorSession(
     }
 
     private fun syncIncrementalEdit(old: String, new: String) {
-        if (!nativeDocument.isNative) return
+        
 
         var prefix = 0
         val maxPrefix = minOf(old.length, new.length)
@@ -67,7 +74,11 @@ class EditorSession(
 
         val startCp = utf16ToCodePoint(old, prefix)
         val endCp = utf16ToCodePoint(old, oldSuffix)
-        nativeDocument.replace(startCp, endCp, new.substring(prefix, newSuffix))
+        if (nativeDocument.isNative) nativeDocument.replace(startCp, endCp, new.substring(prefix, newSuffix))
+        val startByte = old.substring(0, prefix).toByteArray(Charsets.UTF_8).size
+        val endByte = old.substring(0, oldSuffix).toByteArray(Charsets.UTF_8).size
+        syntaxDocument.replace(startByte, endByte, new.substring(prefix, newSuffix))
+        syntaxSpans = syntaxDocument.spans()
     }
 
     fun undo(): Boolean {
@@ -117,6 +128,7 @@ class EditorSession(
 
     override fun close() {
         nativeDocument.close()
+        syntaxDocument.close()
     }
 
     private fun utf16ToCodePoint(text: String, offset: Int): Int =
