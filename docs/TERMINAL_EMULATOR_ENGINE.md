@@ -74,3 +74,24 @@ rather than appending repeated full-screen frames.
 - Unicode grapheme/wide-cell rendering, alternate-screen visual validation,
   keyboard protocol coverage, and real-device tests remain outstanding.
 - The pipe fallback remains a text stream and is not VT-equivalent.
+
+
+## Native cell-grid renderer
+
+The Rust VT parser now serializes the active screen as JSON containing row/column
+dimensions, cursor coordinates, cell text, foreground/background colors (default,
+indexed, or RGB), and compact style flags (bold, italic, underline, inverse,
+strikethrough). JNI exposes this through `nativePollGrid`. The Android session
+polls the grid and Compose draws cells with a monospace native Canvas renderer,
+including color backgrounds and a cursor outline.
+
+### Current limitations
+
+- The JSON grid is a full-frame snapshot on each poll, not a dirty-cell/diff protocol.
+- Cursor is outlined; blinking and block/bar/underline cursor modes are not yet implemented.
+- Wide Unicode grapheme clusters and continuation cells need dedicated width handling.
+- Selection/copy is not yet mapped to cell coordinates in grid mode.
+- The native cell grid exports styling, so the old stream SGR parser is no longer the
+  source of truth in native mode. The plain-text fallback remains intentionally basic.
+- The renderer has not yet been built or exercised on Android hardware; Cargo/Gradle
+  compilation and VT compatibility testing remain required.
