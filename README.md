@@ -172,3 +172,14 @@ See [LSP Editor Intelligence](docs/LSP_INTELLIGENCE.md).
 - [ ] Add inline diagnostic decorations and real-server/device tests.
 
 See [LSP Compose UI](docs/LSP_COMPOSE_UI.md).
+
+### LSP workspace integration
+- [x] Workspace-scoped manager with one local server session per language.
+- [x] Initialize handshake, queued document open, versioned document changes, and close notifications.
+- [x] Route completion, hover, definition, and publishDiagnostics to observable workspace state.
+- [x] Restrict server executables to Byte's private toolchains directory and use argument arrays rather than shell strings.
+- [ ] Connect manager lifecycle to actual editor tabs and file URIs in MainActivity.
+- [ ] Ship verified language-server toolchain profiles; add cancellation, timeout, restart, and capability negotiation.
+- [ ] Run Gradle and on-device tests.
+
+See [LSP Workspace Integration](docs/LSP_WORKSPACE_INTEGRATION.md).
