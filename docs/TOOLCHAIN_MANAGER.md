@@ -32,3 +32,7 @@ files/toolchains/<package-id>/<version>/
 files/toolchains/installed.json
 cache/<package-id>-<version>.zip.part
 ```
+
+
+## User interface
+The searchable package browser, installed inventory, and install-state presentation are implemented in [Language Package Registry UI](LANGUAGE_PACKAGE_REGISTRY_UI.md). Open it from the editor quick-actions menu using Languages. The current catalog is intentionally empty pending reviewed Android-compatible artifacts and pinned digests.
