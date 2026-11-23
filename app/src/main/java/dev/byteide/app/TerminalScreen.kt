@@ -7,6 +7,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -61,6 +63,32 @@ fun TerminalScreen(
     modifier: Modifier = Modifier,
     maxCharacters: Int = 24000
 ) {
+    val gridState = remember { mutableStateOf<JSONObject?>(null) }
+    val parsedUpdate = remember(output) { runCatching { JSONObject(output) }.getOrNull() }
+    if (parsedUpdate != null && parsedUpdate.has("full")) {
+        if (parsedUpdate.optBoolean("full")) {
+            gridState.value = parsedUpdate
+        } else {
+            val previous = gridState.value
+            if (previous != null) {
+                val merged = runCatching { JSONObject(previous.toString()) }.getOrNull()
+                if (merged != null) {
+                    val rows = merged.optJSONArray("grid")
+                    val cells = parsedUpdate.optJSONArray("cells")
+                    if (rows != null && cells != null) {
+                        for (index in 0 until cells.length()) {
+                            val change = cells.optJSONObject(index) ?: continue
+                            val row = rows.optJSONArray(change.optInt("r")) ?: continue
+                            row.put(change.optInt("c"), change.optJSONObject("cell") ?: JSONObject())
+                        }
+                    }
+                    merged.put("cursor", parsedUpdate.optJSONObject("cursor") ?: JSONObject())
+                    gridState.value = merged
+                }
+            }
+        }
+    }
+    val displayFrame = gridState.value ?: parsedUpdate
     val cursorTransition = rememberInfiniteTransition(label = "terminal-cursor")
     val cursorAlpha = cursorTransition.animateFloat(
         initialValue = 1f, targetValue = 0.15f,
@@ -81,7 +109,7 @@ fun TerminalScreen(
         val cellHeight = (metrics.descent - metrics.ascent).coerceAtLeast(1f)
         val baselineOffset = -metrics.ascent
 
-        val parsed = runCatching { JSONObject(output) }.getOrNull()
+        val parsed = displayFrame
         val grid = parsed?.optJSONArray("grid")
         if (grid == null) {
             val lines = output.takeLast(maxCharacters).split('\n')
