@@ -1,31 +1,27 @@
 # Tree-sitter Syntax Engine
 
-## Scope of this implementation
+## Implemented Kotlin parser
 
-The Rust core now contains a persistent Kotlin Tree-sitter parser. `KotlinSyntaxDocument` parses an initial source file, retains its syntax tree, and accepts byte-range replacements. Each replacement edits the old tree with Tree-sitter `InputEdit` coordinates and reparses using the edited tree as the previous tree. The update result exposes changed byte ranges, syntax spans, and parser error/missing-node diagnostics.
+The Rust core includes a persistent Kotlin Tree-sitter parser using `tree-sitter-kotlin-ng`. `KotlinSyntaxDocument` parses initial source, retains its syntax tree, applies byte-range replacements with Tree-sitter `InputEdit`, and reparses using the edited previous tree. It returns changed byte ranges, lexical spans, and parser error/missing-node diagnostics.
+
+## Android integration
+
+The JNI layer exposes parser creation, destruction, incremental replacement, and syntax-span retrieval. Span offsets are converted from Tree-sitter UTF-8 byte offsets to UTF-16 code-unit offsets before crossing JNI, matching Compose's AnnotatedString indexing.
+
+`NativeKotlinSyntax` owns the native parser handle. `EditorSession` sends the minimal changed source range to both the text document and syntax parser, then publishes the updated syntax spans. `ByteCodeEditor` styles those spans. The regex highlighter remains a fallback when the native parser is unavailable.
 
 ## Coordinate contract
 
-All syntax span and edit offsets are UTF-8 byte offsets. This is Tree-sitter's native coordinate system and is not interchangeable with Kotlin/Compose UTF-16 offsets or Rust editor scalar-value offsets. The Android bridge must convert at the boundary. Edits that split a UTF-8 code point are rejected.
+Tree-sitter edits use UTF-8 byte offsets and reject boundaries that split a UTF-8 code point. Android editing uses UTF-16 code units; the JNI span output is explicitly converted to UTF-16. The text document engine uses Unicode scalar-value offsets. These coordinate systems must never be interchanged.
 
 ## Initial language coverage
 
-This stage registers the Kotlin grammar through `tree-sitter-kotlin-ng`. The syntax engine is structured so additional grammar adapters can be added as language packs; other grammars are not claimed to work yet.
+Only Kotlin is wired in this stage. Captures currently cover common keywords, strings, comments, numeric literals, type identifiers, and selected literals. Syntax error and missing-node data are collected in Rust, but a dedicated Problems panel adapter is not yet implemented. This is not semantic highlighting and does not replace LSP diagnostics.
 
-The first capture pass emits lexical categories for common Kotlin keywords, strings, comments, numeric literals, and type identifiers. It also records Tree-sitter error and missing nodes as syntax diagnostics. This is an initial grammar-backed foundation, not a complete semantic-highlighting query set.
+## Performance notes
 
-## Performance model
-
-A parser and syntax tree are retained for the lifetime of a syntax document. Text changes should be submitted as the smallest valid changed byte range. Tree-sitter can then reuse unaffected portions of the previous tree. The current span collector walks the resulting tree to build a complete span list; a later optimization can use changed ranges to update only affected render spans.
-
-## Next integration tasks
-
-- Expose syntax-document lifecycle and incremental edits through JNI.
-- Convert UTF-8 spans into UTF-16 Compose ranges.
-- Replace the Kotlin regex highlighter with Rust-provided syntax spans.
-- Add grammar packs for Rust, JavaScript/TypeScript, JSON, HTML, CSS, Python, and Java.
-- Add language-server diagnostics separately from parser syntax errors.
+The parser and syntax tree are retained per editor session. Incremental edits allow Tree-sitter to reuse unaffected syntax structure. The current implementation walks the resulting tree to collect the full span list after each edit; future work should use changed ranges to update only affected display spans and debounce large edit bursts.
 
 ## Validation status
 
-Unit tests are included for Kotlin parsing, incremental edits, UTF-8 boundary safety, and parse errors. A Cargo test run and Android build have not been executed in this environment; dependency resolution and runtime behavior remain to be verified by CI.
+The crate dependencies and API were checked against the published `tree-sitter-kotlin-ng 1.1.0` documentation. Source changes and JNI integration have been committed, but Cargo tests, Gradle compilation, Android ABI packaging, and on-device runtime tests have not been run. Build success is therefore not yet verified.
