@@ -37,6 +37,8 @@ class TerminalSession(
     @Volatile private var fallbackProcess: Process? = null
     @Volatile private var fallbackWriter: BufferedWriter? = null
     @Volatile private var started = false
+    @Volatile private var terminalRows = 24
+    @Volatile private var terminalColumns = 80
 
     fun start() {
         if (closed.get() || started) return
@@ -45,10 +47,10 @@ class TerminalSession(
             try {
                 require(workingDirectory.isDirectory) { "Workspace directory is unavailable" }
                 if (NativeTerminalBridge.isAvailable) {
-                    val handle = NativeTerminalBridge.nativeCreate("/system/bin/sh", workingDirectory.absolutePath, 24, 80)
+                    val handle = NativeTerminalBridge.nativeCreate("/system/bin/sh", workingDirectory.absolutePath, terminalRows, terminalColumns)
                     check(handle != 0L) { "Unable to create native PTY session" }
                     nativeHandle = handle
-                    main.post { if (!closed.get()) onState("Native PTY · shell started · 24×80") }
+                    main.post { if (!closed.get()) onState("Native PTY · shell started · ${terminalRows}×${terminalColumns}") }
                     pollNative(handle)
                 } else {
                     startPipeFallback()
@@ -132,8 +134,10 @@ class TerminalSession(
     }
 
     fun resize(rows: Int, columns: Int) {
+        terminalRows = rows.coerceIn(1, 300)
+        terminalColumns = columns.coerceIn(1, 500)
         val handle = nativeHandle
-        if (handle != 0L) runCatching { NativeTerminalBridge.nativeResize(handle, rows.coerceIn(1, 300), columns.coerceIn(1, 500)) }
+        if (handle != 0L) runCatching { NativeTerminalBridge.nativeResize(handle, terminalRows, terminalColumns) }
     }
 
     fun sendInterruptByte() {
