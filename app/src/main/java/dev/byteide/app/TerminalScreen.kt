@@ -65,6 +65,7 @@ fun TerminalScreen(
     output: String,
     modifier: Modifier = Modifier,
     maxCharacters: Int = 24000,
+    cursorStyle: String = "Block",
     onSelectionChanged: (String) -> Unit = {}
 ) {
     var selectionStart by remember { mutableStateOf<androidx.compose.ui.geometry.Offset?>(null) }
@@ -141,8 +142,8 @@ fun TerminalScreen(
         val cursorColumn = cursor?.optInt("column", -1) ?: -1
         val cursorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.argb((cursorAlpha * 255).toInt(), 183, 201, 232)
-            style = Paint.Style.STROKE
-            strokeWidth = 1.5.dp.toPx()
+            style = if (cursorStyle == "Block") Paint.Style.FILL else Paint.Style.STROKE
+            strokeWidth = 2.dp.toPx()
         }
 
         for (row in 0 until minOf(rowCount, grid.length())) {
@@ -208,7 +209,12 @@ fun TerminalScreen(
         if (cursorRow in 0 until rowCount && cursorColumn >= 0) {
             val left = cursorColumn * cellWidth
             val top = cursorRow * cellHeight
-            canvas.drawRect(RectF(left, top, left + cellWidth, top + cellHeight), cursorPaint)
+            val cursorRect = when (cursorStyle) {
+                "Bar" -> RectF(left, top, left + 2.dp.toPx(), top + cellHeight)
+                "Underline" -> RectF(left, top + cellHeight - 2.dp.toPx(), left + cellWidth, top + cellHeight)
+                else -> RectF(left, top, left + cellWidth, top + cellHeight)
+            }
+            canvas.drawRect(cursorRect, cursorPaint)
         }
     }
 
