@@ -1,6 +1,9 @@
 package dev.byteide.app
 
+import android.os.Build
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,26 +50,29 @@ fun ToolchainManagerDialog(catalog: LanguagePackCatalog, installer: ToolchainIns
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) }
                 )
                 Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     categories.forEach { category ->
                         FilterChip(selected = selectedCategory == category, onClick = { selectedCategory = category },
                             label = { Text(category, fontSize = 11.sp) })
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                if (catalog.packages.isEmpty()) EmptyLanguageCatalog()
-                else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (installed.isNotEmpty()) {
                         item { Text("INSTALLED", color = Color(0xFF91A0B5), fontSize = 10.sp, fontWeight = FontWeight.Bold) }
                         items(installed, key = { "${it.packageId}:${it.version}" }) { InstalledToolchainRow(it) }
                     }
-                    item { Text("AVAILABLE PACKAGES", color = Color(0xFF91A0B5), fontSize = 10.sp, fontWeight = FontWeight.Bold) }
-                    items(filtered, key = { it.spec.packageId }) { pack ->
-                        val state = states[pack.spec.packageId]
-                        val isInstalled = installed.any { it.packageId == pack.spec.packageId && it.version == pack.spec.version }
-                        LanguagePackCard(pack, state, isInstalled) { installer.install(pack.spec) }
+                    if (catalog.packages.isEmpty()) {
+                        item { EmptyLanguageCatalog() }
+                    } else {
+                        item { Text("AVAILABLE PACKAGES", color = Color(0xFF91A0B5), fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                        items(filtered, key = { it.spec.packageId }) { pack ->
+                            val state = states[pack.spec.packageId]
+                            val isInstalled = installed.any { it.packageId == pack.spec.packageId && it.version == pack.spec.version }
+                            LanguagePackCard(pack, state, isInstalled) { installer.install(pack.spec) }
+                        }
+                        if (filtered.isEmpty()) item { Text("No packages match this search.", color = Color(0xFF91A0B5)) }
                     }
-                    if (filtered.isEmpty()) item { Text("No packages match this search.", color = Color(0xFF91A0B5)) }
                 }
             }
         }
@@ -99,6 +105,7 @@ private fun InstalledToolchainRow(item: InstalledToolchain) {
 
 @Composable
 private fun LanguagePackCard(pack: LanguagePack, state: ToolchainInstallState?, installed: Boolean, onInstall: () -> Unit) {
+    val abiCompatible = pack.supportedAbis.isNotEmpty() && pack.supportedAbis.any { it in Build.SUPPORTED_ABIS }
     val active = state?.phase in listOf(
         ToolchainInstallPhase.DOWNLOADING, ToolchainInstallPhase.VERIFYING,
         ToolchainInstallPhase.EXTRACTING, ToolchainInstallPhase.REGISTERING
@@ -110,7 +117,7 @@ private fun LanguagePackCard(pack: LanguagePack, state: ToolchainInstallState?, 
                     Text(pack.spec.displayName, color = Color(0xFFE8EEF9), fontWeight = FontWeight.SemiBold)
                     Text("${pack.spec.languageId} · ${pack.spec.version} · ${pack.category}", color = Color(0xFF91A0B5), fontSize = 11.sp)
                 }
-                Button(onClick = onInstall, enabled = !installed && !active) {
+                Button(onClick = onInstall, enabled = !installed && !active && abiCompatible) {
                     Text(if (installed) "Installed" else if (active) "Working" else "Install")
                 }
             }
@@ -118,7 +125,11 @@ private fun LanguagePackCard(pack: LanguagePack, state: ToolchainInstallState?, 
                 Spacer(Modifier.height(5.dp))
                 Text(pack.description, color = Color(0xFFB4C0D1), fontSize = 12.sp)
             }
-            if (pack.supportedAbis.isNotEmpty()) Text("ABIs: ${pack.supportedAbis.joinToString()}", color = Color(0xFF91A0B5), fontSize = 10.sp)
+            Text(
+                if (abiCompatible) "Compatible with this device: ${pack.supportedAbis.joinToString()}"
+                else "Unavailable: no verified ABI compatibility for this device",
+                color = if (abiCompatible) Color(0xFF91A0B5) else Color(0xFFFFB86B), fontSize = 10.sp
+            )
             if (state != null) {
                 Spacer(Modifier.height(8.dp))
                 if (active) LinearProgressIndicator(Modifier.fillMaxWidth())
