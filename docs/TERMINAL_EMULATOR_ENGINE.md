@@ -37,3 +37,18 @@ The Android output panel now uses a dedicated `TerminalScreen` composable with
 a dark terminal surface, monospace text, automatic scroll-to-bottom, and text
 selection/copy support. This is still a text-stream renderer: it does not yet
 consume native screen snapshots or render per-cell ANSI attributes/cursor state.
+
+
+## ANSI SGR styling in Compose
+
+The Compose terminal surface now interprets common SGR style sequences:
+- Standard and bright 16-color foreground/background.
+- 256-color indexed palette.
+- 24-bit RGB foreground/background.
+- Bold, italic, and underline toggles and resets.
+- Text selection and automatic scroll-to-bottom remain available.
+
+This is an output-stream styling layer, not a full VT screen renderer.
+Cursor addressing, erase commands, alternate-screen state, terminal input
+protocols, wide-cell layout, and native parser/JNI snapshots are not yet
+implemented in the Android UI.
