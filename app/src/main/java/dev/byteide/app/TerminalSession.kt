@@ -7,13 +7,23 @@ import java.io.BufferedWriter
 import java.io.File
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
-import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
+object NativeTerminalBridge {
+    val isAvailable: Boolean = runCatching { System.loadLibrary("byte_core") }.isSuccess
+    @JvmStatic external fun nativeCreate(program: String, workingDirectory: String, rows: Int, columns: Int): Long
+    @JvmStatic external fun nativeWrite(handle: Long, input: String): Boolean
+    @JvmStatic external fun nativePoll(handle: Long): String
+    @JvmStatic external fun nativeIsRunning(handle: Long): Boolean
+    @JvmStatic external fun nativeResize(handle: Long, rows: Int, columns: Int): Boolean
+    @JvmStatic external fun nativeSignal(handle: Long, signal: Int): Boolean
+    @JvmStatic external fun nativeClose(handle: Long)
+}
+
 /**
- * Persistent Android app-private shell using piped stdio.
- * This is not a PTY: terminal control sequences and job control are not supported.
+ * Terminal session with a native PTY when byte_core is packaged.
+ * A pipe-backed shell fallback is retained for development builds without JNI.
  */
 class TerminalSession(
     private val workingDirectory: File,
@@ -21,87 +31,121 @@ class TerminalSession(
     private val onState: (String) -> Unit = {}
 ) : AutoCloseable {
     private val main = Handler(Looper.getMainLooper())
-    private val io: ExecutorService = Executors.newCachedThreadPool()
+    private val io = Executors.newSingleThreadExecutor()
     private val closed = AtomicBoolean(false)
-    private val starting = AtomicBoolean(false)
-    @Volatile private var process: Process? = null
-    @Volatile private var writer: BufferedWriter? = null
+    @Volatile private var nativeHandle = 0L
+    @Volatile private var fallbackProcess: Process? = null
+    @Volatile private var fallbackWriter: BufferedWriter? = null
+    @Volatile private var started = false
 
     fun start() {
-        if (closed.get() || !starting.compareAndSet(false, true)) return
+        if (closed.get() || started) return
+        started = true
         io.execute {
-            if (closed.get() || process != null) { starting.set(false); return@execute }
             try {
                 require(workingDirectory.isDirectory) { "Workspace directory is unavailable" }
-                val shell = File("/system/bin/sh")
-                require(shell.canExecute()) { "Android system shell is unavailable" }
-                val child = ProcessBuilder(shell.absolutePath)
-                    .directory(workingDirectory)
-                    .redirectErrorStream(true)
-                    .start()
-                process = child
-                starting.set(false)
-                writer = BufferedWriter(OutputStreamWriter(child.outputStream, Charsets.UTF_8))
-                main.post { if (!closed.get()) onState("Shell started · ${workingDirectory.name}") }
-                io.execute {
-                    try {
-                        BufferedReader(InputStreamReader(child.inputStream, Charsets.UTF_8)).use { reader ->
-                            val buffer = CharArray(2048)
-                            while (!closed.get()) {
-                                val count = reader.read(buffer)
-                                if (count < 0) break
-                                val chunk = String(buffer, 0, count)
-                                main.post { if (!closed.get()) onOutput(chunk) }
-                            }
-                        }
-                    } catch (error: Exception) {
-                        if (!closed.get()) main.post { onState("Output error: ${error.message}") }
-                    }
-                    val code = runCatching { child.waitFor() }.getOrNull()
-                    process = null
-                    writer = null
-                    if (!closed.get()) main.post { onState("Shell exited ${code ?: ""}") }
+                if (NativeTerminalBridge.isAvailable) {
+                    val handle = NativeTerminalBridge.nativeCreate("/system/bin/sh", workingDirectory.absolutePath, 24, 80)
+                    check(handle != 0L) { "Unable to create native PTY session" }
+                    nativeHandle = handle
+                    main.post { if (!closed.get()) onState("Native PTY · shell started · 24×80") }
+                    pollNative(handle)
+                } else {
+                    startPipeFallback()
                 }
             } catch (error: Exception) {
-                starting.set(false)
-                main.post { if (!closed.get()) onState("Shell unavailable: ${error.message}") }
+                main.post { if (!closed.get()) onState("Terminal unavailable: ${error.message}") }
             }
         }
+    }
+
+    private fun pollNative(handle: Long) {
+        while (!closed.get() && nativeHandle == handle) {
+            val output = runCatching { NativeTerminalBridge.nativePoll(handle) }.getOrDefault("")
+            if (output.isNotEmpty()) main.post { if (!closed.get()) onOutput(output) }
+            val running = runCatching { NativeTerminalBridge.nativeIsRunning(handle) }.getOrDefault(false)
+            if (!running) {
+                nativeHandle = 0L
+                main.post { if (!closed.get()) onState("PTY process exited") }
+                break
+            }
+            try { Thread.sleep(24) } catch (_: InterruptedException) { break }
+        }
+    }
+
+    private fun startPipeFallback() {
+        val shell = File("/system/bin/sh")
+        require(shell.canExecute()) { "Android system shell is unavailable" }
+        val child = ProcessBuilder(shell.absolutePath).directory(workingDirectory).redirectErrorStream(true).start()
+        fallbackProcess = child
+        fallbackWriter = BufferedWriter(OutputStreamWriter(child.outputStream, Charsets.UTF_8))
+        main.post { if (!closed.get()) onState("Pipe fallback · PTY unavailable") }
+        BufferedReader(InputStreamReader(child.inputStream, Charsets.UTF_8)).use { reader ->
+            val buffer = CharArray(2048)
+            while (!closed.get()) {
+                val count = reader.read(buffer)
+                if (count < 0) break
+                val chunk = String(buffer, 0, count)
+                main.post { if (!closed.get()) onOutput(chunk) }
+            }
+        }
+        val code = runCatching { child.waitFor() }.getOrNull()
+        fallbackProcess = null
+        main.post { if (!closed.get()) onState("Shell exited ${code ?: ""}") }
     }
 
     fun execute(command: String) {
         if (command.isBlank() || closed.get()) return
         io.execute {
-            try {
-                val activeWriter = writer ?: throw IllegalStateException("Shell is not running")
-                activeWriter.write(command)
-                activeWriter.newLine()
-                activeWriter.flush()
-            } catch (error: Exception) {
-                main.post { if (!closed.get()) onState("Command failed: ${error.message}") }
+            val handle = nativeHandle
+            if (handle != 0L) {
+                if (!runCatching { NativeTerminalBridge.nativeWrite(handle, command + "\n") }.getOrDefault(false)) {
+                    main.post { if (!closed.get()) onState("PTY input failed") }
+                }
+            } else {
+                runCatching {
+                    val writer = fallbackWriter ?: error("Shell is not running")
+                    writer.write(command)
+                    writer.newLine()
+                    writer.flush()
+                }.onFailure { error -> main.post { if (!closed.get()) onState("Command failed: ${error.message}") } }
             }
         }
     }
 
-    /** Writes an ETX byte. Actual foreground-process signal delivery requires a PTY. */
-    fun sendInterruptByte() {
+    fun writeInput(input: String) {
         if (closed.get()) return
         io.execute {
-            runCatching {
-                writer?.write(3)
-                writer?.flush()
-            }.onFailure { error ->
-                main.post { if (!closed.get()) onState("Interrupt unavailable: ${error.message}") }
-            }
+            val handle = nativeHandle
+            if (handle != 0L) runCatching { NativeTerminalBridge.nativeWrite(handle, input) }
+            else runCatching { fallbackWriter?.write(input); fallbackWriter?.flush() }
+        }
+    }
+
+    fun resize(rows: Int, columns: Int) {
+        val handle = nativeHandle
+        if (handle != 0L) runCatching { NativeTerminalBridge.nativeResize(handle, rows.coerceIn(1, 300), columns.coerceIn(1, 500)) }
+    }
+
+    fun sendInterruptByte() {
+        val handle = nativeHandle
+        if (handle != 0L) {
+            runCatching { NativeTerminalBridge.nativeSignal(handle, 2) }
+        } else {
+            // A pipe has no terminal line discipline; this is not equivalent to SIGINT.
+            execute("\u0003")
         }
     }
 
     override fun close() {
         if (!closed.compareAndSet(false, true)) return
-        runCatching { writer?.close() }
-        process?.destroy()
-        process = null
-        writer = null
+        val handle = nativeHandle
+        nativeHandle = 0L
+        if (handle != 0L) runCatching { NativeTerminalBridge.nativeClose(handle) }
+        runCatching { fallbackWriter?.close() }
+        fallbackProcess?.destroy()
+        fallbackProcess = null
+        fallbackWriter = null
         io.shutdownNow()
     }
 }
