@@ -301,3 +301,9 @@ still pending, and the pipe fallback is not a full VT terminal.
 - [ ] Dirty-cell updates, cursor blink/modes, wide-Unicode layout, cell-based selection/copy, and real-device validation.
 
 See [Terminal Emulator Engine](docs/TERMINAL_EMULATOR_ENGINE.md).
+
+
+Terminal polling now avoids regenerating and transferring a full JSON grid on
+idle ticks after the initial frame. Full-grid snapshots are still used whenever
+new PTY bytes arrive; dirty-cell updates and wide-Unicode/cursor interaction
+remain future work. See [Terminal Emulator Engine](docs/TERMINAL_EMULATOR_ENGINE.md).
