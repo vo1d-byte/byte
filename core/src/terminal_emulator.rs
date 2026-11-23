@@ -58,7 +58,13 @@ impl TerminalEmulator {
                 | (if attr.underline() { 4 } else { 0 })
                 | (if attr.inverse() { 8 } else { 0 })
                 | (if attr.strikethrough() { 16 } else { 0 });
-            json!({"t":cell.contents(),"f":fg,"b":bg,"a":flags})
+            let contents = cell.contents();
+            let width = if contents.is_empty() {
+                0
+            } else {
+                unicode_width::UnicodeWidthStr::width(contents).clamp(1, 2)
+            };
+            json!({"t":contents,"w":width,"f":fg,"b":bg,"a":flags})
         } else {
             json!({"t":" ","f":[0,0,0,0],"b":[0,0,0,0],"a":0})
         }
@@ -158,6 +164,19 @@ mod tests {
         assert!(contents.contains("A"));
         assert!(contents.contains("界"));
         assert!(contents.contains("🙂"));
+    }
+
+    #[test]
+    fn grid_exports_display_width_for_wide_unicode_cells() {
+        let mut terminal = TerminalEmulator::new(2, 12, 10);
+        terminal.process("A界B".as_bytes());
+        let grid: serde_json::Value = serde_json::from_str(&terminal.grid_json()).unwrap();
+        assert_eq!(grid["grid"][0][0]["t"], "A");
+        assert_eq!(grid["grid"][0][0]["w"], 1);
+        assert_eq!(grid["grid"][0][1]["t"], "界");
+        assert_eq!(grid["grid"][0][1]["w"], 2);
+        assert_eq!(grid["grid"][0][3]["t"], "B");
+        assert_eq!(grid["grid"][0][3]["w"], 1);
     }
 
     #[test]
