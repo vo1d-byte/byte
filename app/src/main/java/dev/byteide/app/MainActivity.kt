@@ -108,7 +108,7 @@ private fun EditorFirstWorkspace() {
                         modifier = Modifier.fillMaxWidth().weight(if (panelSize == PanelSize.EXPANDED) 0.8f else 0.25f))
                 }
                 FileTabs(file, dirty, { file = it }, {})
-                ByteCodeEditor(editorValue, { next -> editorValue = next; editorSession.applyValue(next); editorUiRevision++ }, Modifier.weight(1f))
+                ByteCodeEditor(editorValue, { next -> editorValue = next; editorSession.applyValue(next); editorUiRevision++ }, Modifier.weight(1f), editorSession.syntaxSpans)
                 if (showCursorPad) CursorPad(onClose = { showCursorPad = false })
                 else CodeKeyRow(activeTab == OutputTab.TERMINAL, { token ->
                     if (token == "Cursor") showCursorPad = true
