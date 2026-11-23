@@ -220,3 +220,16 @@ See [Actual Editor UI Integration](docs/ACTUAL_EDITOR_UI_INTEGRATION.md).
 - [ ] Run Cargo tests, Gradle build, and Android device tests.
 
 See [Toolchain Manager](docs/TOOLCHAIN_MANAGER.md).
+
+### Language package registry and installer UI
+- [x] Parse the bundled asset-backed language package catalog.
+- [x] Add searchable, category-filtered Language Toolchains dialog.
+- [x] Show installed toolchain inventory and package install state.
+- [x] Connect Install actions to the app-private ToolchainInstaller.
+- [x] Add a Languages entry to the editor quick-actions menu.
+- [x] Keep the catalog explicitly empty until Android-compatible artifacts and pinned digests are reviewed.
+- [ ] Add signed remote catalog refresh and ABI enforcement.
+- [ ] Add uninstall, update, rollback, dependency resolution, and storage accounting.
+- [ ] Populate reviewed packages and run Gradle/device validation.
+
+See [Language Package Registry UI](docs/LANGUAGE_PACKAGE_REGISTRY_UI.md).
