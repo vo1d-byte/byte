@@ -139,28 +139,6 @@ fun TerminalScreen(
         val cursor = parsed.optJSONObject("cursor")
         val cursorRow = cursor?.optInt("row", -1) ?: -1
         val cursorColumn = cursor?.optInt("column", -1) ?: -1
-        val startPoint = selectionStart
-        val endPoint = selectionEnd
-        if (startPoint != null && endPoint != null && grid.length() > 0) {
-            val startRow = (startPoint.y / cellHeight).toInt().coerceIn(0, grid.length() - 1)
-            val endRow = (endPoint.y / cellHeight).toInt().coerceIn(0, grid.length() - 1)
-            val startCol = (startPoint.x / cellWidth).toInt().coerceAtLeast(0)
-            val endCol = (endPoint.x / cellWidth).toInt().coerceAtLeast(0)
-            val firstRow = minOf(startRow, endRow)
-            val lastRow = maxOf(startRow, endRow)
-            for (r in firstRow..lastRow) {
-                val cells = grid.optJSONArray(r) ?: continue
-                val from = if (r == startRow) startCol else 0
-                val to = if (r == endRow) endCol else cells.length() - 1
-                val left = minOf(from, to).coerceIn(0, cells.length())
-                val right = (maxOf(from, to) + 1).coerceIn(left, cells.length())
-                if (right > left) {
-                    paint.color = 0x665B83D6
-                    canvas.drawRect(left * cellWidth, r * cellHeight, right * cellWidth, (r + 1) * cellHeight, paint)
-                }
-            }
-        }
-
         val cursorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.argb((cursorAlpha * 255).toInt(), 183, 201, 232)
             style = Paint.Style.STROKE
@@ -200,6 +178,28 @@ fun TerminalScreen(
                 }
                 if (flags and 16 != 0) {
                     canvas.drawLine(x, y + cellHeight * 0.55f, x + cellWidth, y + cellHeight * 0.55f, paint)
+                }
+            }
+        }
+
+        val first = if (startPoint != null && endPoint != null &&
+            (startPoint.y < endPoint.y || (startPoint.y == endPoint.y && startPoint.x <= endPoint.x))) startPoint else endPoint
+        val last = if (first === startPoint) endPoint else startPoint
+        if (first != null && last != null && grid.length() > 0) {
+            val firstRow = (first.y / cellHeight).toInt().coerceIn(0, grid.length() - 1)
+            val lastRow = (last.y / cellHeight).toInt().coerceIn(firstRow, grid.length() - 1)
+            val firstColumn = (first.x / cellWidth).toInt().coerceAtLeast(0)
+            val lastColumn = (last.x / cellWidth).toInt().coerceAtLeast(0)
+            for (r in firstRow..lastRow) {
+                val cells = grid.optJSONArray(r) ?: continue
+                val from = if (r == firstRow) firstColumn else 0
+                val to = if (r == lastRow) lastColumn else cells.length() - 1
+                val left = minOf(from, to).coerceIn(0, cells.length())
+                val right = (maxOf(from, to) + 1).coerceIn(left, cells.length())
+                if (right > left) {
+                    paint.color = 0x665B83D6
+                    paint.style = Paint.Style.FILL
+                    canvas.drawRect(left * cellWidth, r * cellHeight, right * cellWidth, (r + 1) * cellHeight, paint)
                 }
             }
         }
