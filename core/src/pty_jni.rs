@@ -55,7 +55,7 @@ pub extern "system" fn Java_dev_byteide_app_NativeTerminalBridge_nativeIsRunning
     _env: JNIEnv, _class: JClass, handle: jlong,
 ) -> jboolean {
     let Ok(mut map) = sessions().lock() else { return 0; };
-    map.get_mut(&(handle as i64)).map(|s| if s.poll().running { 1 } else { 0 }).unwrap_or(0)
+    map.get_mut(&(handle as i64)).map(|s| if s.is_running() { 1 } else { 0 }).unwrap_or(0)
 }
 
 #[no_mangle]
