@@ -39,7 +39,7 @@ impl TerminalEmulator {
         TerminalSnapshot { contents: screen.contents(), cursor_row, cursor_column, rows: self.rows, columns: self.columns }
     }
 
-    fn cell_json(cell: Option<vt100::Cell>) -> serde_json::Value {
+    fn cell_json(cell: Option<&vt100::Cell>) -> serde_json::Value {
         use serde_json::json;
         if let Some(cell) = cell {
             let fg = match cell.fgcolor() {
