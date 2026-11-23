@@ -183,3 +183,15 @@ See [LSP Compose UI](docs/LSP_COMPOSE_UI.md).
 - [ ] Run Gradle and on-device tests.
 
 See [LSP Workspace Integration](docs/LSP_WORKSPACE_INTEGRATION.md).
+
+### Live editor LSP integration
+- [x] Editor controller binds a tab to the workspace manager and document lifecycle.
+- [x] Debounced completion requests (180 ms) with stale-response suppression.
+- [x] Hover and definition request helpers.
+- [x] Basic identifier-prefix completion insertion.
+- [ ] Mount controller and LSP surfaces in MainActivity/editor overlay.
+- [ ] Register verified installed server profiles through the toolchain installer.
+- [ ] Apply completion text edits/snippets and WorkspaceEdit via undoable native editor transactions.
+- [ ] Run Gradle compilation and Android device tests.
+
+See [Live Editor LSP](docs/LIVE_EDITOR_LSP.md).
