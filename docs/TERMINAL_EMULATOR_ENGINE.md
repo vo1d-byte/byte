@@ -194,3 +194,20 @@ Complete grapheme-cluster shaping and the Unicode Bidirectional Algorithm for
 mixed Arabic/Latin terminal rows are not implemented yet. Arabic joining and
 visual RTL ordering still require row-run shaping and device-level verification.
 Cargo and Gradle builds remain to be run.
+
+## Arabic shaping and bidirectional row runs
+
+The Android grid renderer now groups adjacent cells that share foreground,
+background, and bold/italic attributes into contextual text runs. Each run is
+passed through Android's text shaping path rather than drawing each terminal
+cell independently. This allows contextual Arabic joining and combining-mark
+positioning to work across adjacent cells. Java's Bidi resolver divides mixed
+Arabic/Latin/numeric runs into visual directional runs before drawing.
+
+This is a first rendering pass, not a complete terminal-grade bidi solution.
+The VT grid and selection coordinates remain logical terminal columns, while
+bidi visual runs can reorder glyphs; hit-testing and selection therefore still
+need a logical-to-visual cell map. Wide grapheme clusters, emoji ZWJ sequences,
+cursor placement inside RTL runs, and terminal applications that expect strict
+LTR cell positioning need device-level validation. Cargo/Gradle tests have not
+yet been run.
