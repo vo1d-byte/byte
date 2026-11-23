@@ -93,7 +93,7 @@ pub extern "system" fn Java_dev_byteide_app_NativeTerminalBridge_nativePollGrid(
     let Ok(mut map) = screens().lock() else { return make_string(&mut env, "{}".to_string()); };
     if let Some(screen) = map.get_mut(&id) {
         screen.process(&output);
-        let snapshot = screen.grid_json();
+        let snapshot = screen.grid_delta_json();
         if let Ok(mut seen) = initialized_grids().lock() { seen.insert(id); }
         make_string(&mut env, snapshot)
     } else {
@@ -134,6 +134,7 @@ pub extern "system" fn Java_dev_byteide_app_NativeTerminalBridge_nativeResize(
             screen.resize(rows.max(1) as u16, columns.max(1) as u16);
         }
     }
+    if let Ok(mut seen) = initialized_grids().lock() { seen.remove(&(handle as i64)); }
     result
 }
 
