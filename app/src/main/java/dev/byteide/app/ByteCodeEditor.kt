@@ -35,7 +35,8 @@ private val EditorType = Color(0xFF82AAFF)
 fun ByteCodeEditor(
     value: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    syntaxSpans: List<EditorSyntaxSpan> = emptyList()
 ) {
     val scroll = rememberScrollState()
     val lineCount = value.text.count { it == '\n' } + 1
@@ -69,7 +70,7 @@ fun ByteCodeEditor(
                     fontSize = 13.sp,
                     lineHeight = 23.sp
                 ),
-                visualTransformation = KotlinSyntaxTransformation,
+                visualTransformation = KotlinSyntaxTransformation(syntaxSpans),
                 maxLines = Int.MAX_VALUE,
                 softWrap = false,
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF8BA8FF))
@@ -78,7 +79,7 @@ fun ByteCodeEditor(
     }
 }
 
-private object KotlinSyntaxTransformation : VisualTransformation {
+private class KotlinSyntaxTransformation(private val syntaxSpans: List<EditorSyntaxSpan>) : VisualTransformation {
     private val tokenPattern = Regex(
         """//[^\n]*|/\*[\s\S]*?\*/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b(?:package|import|class|object|interface|fun|val|var|if|else|when|for|while|do|return|break|continue|this|super|is|in|as|try|catch|finally|throw|public|private|protected|internal|override|open|abstract|data|sealed|enum|companion|suspend|inline|lateinit|const|operator|infix|tailrec|where|typealias|by|null|true|false)\b|\b(?:Int|Long|Short|Byte|Float|Double|Boolean|Char|String|Unit|Any|Nothing)\b|\b\d+(?:\.\d+)?\b"""
     )
@@ -86,7 +87,22 @@ private object KotlinSyntaxTransformation : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val highlighted = buildAnnotatedString {
             append(text)
-            tokenPattern.findAll(text.text).forEach { match ->
+            if (syntaxSpans.isNotEmpty()) {
+                syntaxSpans.forEach { span ->
+                    val color = when (span.kind) {
+                        "keyword" -> EditorKeyword
+                        "string" -> EditorString
+                        "comment" -> EditorComment
+                        "number" -> EditorNumber
+                        "type", "function" -> EditorType
+                        "literal" -> EditorNumber
+                        else -> EditorForeground
+                    }
+                    val start = span.start.coerceIn(0, text.length)
+                    val end = span.end.coerceIn(start, text.length)
+                    if (start < end) addStyle(SpanStyle(color = color), start, end)
+                }
+            } else tokenPattern.findAll(text.text).forEach { match ->
                 val token = match.value
                 val color = when {
                     token.startsWith("//") || token.startsWith("/*") -> EditorComment
