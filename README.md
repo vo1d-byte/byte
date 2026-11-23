@@ -299,7 +299,7 @@ still pending, and the pipe fallback is not a full VT terminal.
 - [x] Expose full-grid snapshots through JNI and poll them from Kotlin.
 - [x] Draw native VT cells and cursor outline using an Android Canvas renderer.
 - [x] Touch-drag cell selection with Android clipboard copy/paste wired to PTY input.
-- [ ] Word/line selection handles, wide-Unicode-aware selection, cursor modes, and real-device validation.
+- [ ] Logical-to-visual bidi cell mapping, word/line selection handles, grapheme-aware hit-testing, and real-device validation.
 
 See [Terminal Emulator Engine](docs/TERMINAL_EMULATOR_ENGINE.md).
 
