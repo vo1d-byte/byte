@@ -207,3 +207,16 @@ See [Live Editor LSP](docs/LIVE_EDITOR_LSP.md).
 - [ ] Run Gradle compilation and Android device tests.
 
 See [Actual Editor UI Integration](docs/ACTUAL_EDITOR_UI_INTEGRATION.md).
+
+### Language toolchain manager
+- [x] Kotlin installer for app-private ZIP toolchains with HTTPS-only downloads.
+- [x] Pinned SHA-256 verification, bounded download/extraction, and ZIP path traversal protection.
+- [x] Staging-directory publication and installed package registry.
+- [x] Optional language-server registration after package installation.
+- [x] Rust catalog schema validation with tests for empty catalogs, HTTP rejection, and unsafe IDs.
+- [ ] Authenticate catalog metadata with an app-pinned signing key.
+- [ ] Populate catalog with reviewed Android-host-compatible packages and verified artifact digests.
+- [ ] Add Compose package browser, install/update/rollback/removal, and ABI/dependency resolution.
+- [ ] Run Cargo tests, Gradle build, and Android device tests.
+
+See [Toolchain Manager](docs/TOOLCHAIN_MANAGER.md).
