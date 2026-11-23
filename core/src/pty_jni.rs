@@ -73,6 +73,22 @@ pub extern "system" fn Java_dev_byteide_app_NativeTerminalBridge_nativePollScree
 }
 
 #[no_mangle]
+pub extern "system" fn Java_dev_byteide_app_NativeTerminalBridge_nativePollGrid(
+    mut env: JNIEnv, _class: JClass, handle: jlong,
+) -> jstring {
+    let output = sessions().lock().ok()
+        .and_then(|mut map| map.get_mut(&(handle as i64)).map(|session| session.poll().output))
+        .unwrap_or_default();
+    let Ok(mut map) = screens().lock() else { return make_string(&mut env, "{}".to_string()); };
+    if let Some(screen) = map.get_mut(&(handle as i64)) {
+        screen.process(&output);
+        make_string(&mut env, screen.grid_json())
+    } else {
+        make_string(&mut env, "{}".to_string())
+    }
+}
+
+#[no_mangle]
 pub extern "system" fn Java_dev_byteide_app_NativeTerminalBridge_nativeCursorInfo(
     mut env: JNIEnv, _class: JClass, handle: jlong,
 ) -> jstring {
