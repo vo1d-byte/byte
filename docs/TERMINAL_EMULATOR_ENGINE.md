@@ -110,3 +110,23 @@ also corrected during this pass. This change has been source-verified on GitHub,
 but Cargo tests, Gradle compilation, Android device rendering, Unicode wide-cell
 behavior, cursor blinking, and cell-based selection/copy have not been run or
 completed.
+
+
+## Cursor and Unicode rendering pass
+
+The Compose cell renderer now animates the cursor outline with a low-cost alpha
+transition. The Rust VT layer includes a regression test asserting that CJK and
+emoji text survive PTY byte parsing into the screen snapshot. The renderer draws
+the complete text returned for each cell, allowing a wide glyph to use its
+measured glyph width rather than truncating it to a single character.
+
+### Remaining correctness and performance work
+
+- This is not complete grapheme-cluster or bidirectional Arabic shaping support.
+  Contextual joining across adjacent terminal cells still needs a row-run shaping
+  strategy and visual tests on Android.
+- The cursor currently blinks as an outline; DECSCUSR block/bar/underline modes
+  and the terminal's cursor-visibility state are not exported yet.
+- Dirty-cell diffs, cell-coordinate selection/copy/paste, and clipboard integration
+  are not implemented in this pass.
+- Cargo tests and Android Gradle/device validation remain unexecuted.
