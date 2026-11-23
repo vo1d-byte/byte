@@ -31,7 +31,7 @@ class TerminalSession(
     private val onState: (String) -> Unit = {}
 ) : AutoCloseable {
     private val main = Handler(Looper.getMainLooper())
-    private val io = Executors.newSingleThreadExecutor()
+    private val io = Executors.newCachedThreadPool()
     private val closed = AtomicBoolean(false)
     @Volatile private var nativeHandle = 0L
     @Volatile private var fallbackProcess: Process? = null
@@ -132,8 +132,8 @@ class TerminalSession(
         if (handle != 0L) {
             runCatching { NativeTerminalBridge.nativeSignal(handle, 2) }
         } else {
-            // A pipe has no terminal line discipline; this is not equivalent to SIGINT.
-            execute("\u0003")
+            // A pipe has no terminal line discipline; this byte may be read as ordinary input.
+            io.execute { runCatching { fallbackWriter?.write(3); fallbackWriter?.flush() } }
         }
     }
 
