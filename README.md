@@ -77,7 +77,7 @@ Requirements:
 
 Open the repository root in Android Studio, allow Gradle to sync, install the required SDK components, and run the app configuration on an Android device or emulator.
 
-Build the Rust core from the core directory with cargo test and cargo build. The initial crate is host-testable. Android cross-compilation and JNI packaging are follow-up integration tasks requiring the Android NDK toolchain.
+Build the Rust core from the core directory with cargo test and cargo build. The Rust core is host-testable. JNI entry points are provided for Android; build and package the Android shared library with cargo-ndk as documented in [JNI Integration](docs/JNI_INTEGRATION.md). Gradle automation and device validation remain pending.
 
 ## Mobile interaction design
 
@@ -106,7 +106,7 @@ The Android workspace follows the supplied 14-screen mobile IDE brief: editor-fi
 - [x] Selection, cursor movement, replacement, backspace, and forward delete.
 - [x] Edit-based undo/redo history and revision tracking.
 - [x] Kotlin editor-session model preserving UTF-16 selection and viewport state.
-- [ ] JNI adapter and Android ABI packaging.
+- [x] JNI adapter for document lifecycle, text retrieval, range replacement, selection, undo, and redo.\n- [ ] Automated Android ABI packaging and device instrumentation tests.
 - [ ] Grapheme-aware navigation, grouped undo, multi-cursor, syntax parsing, and LSP.
 
 ### Workspace and editing
