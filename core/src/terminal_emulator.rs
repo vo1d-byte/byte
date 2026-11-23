@@ -85,7 +85,7 @@ mod tests {
     #[test]
     fn interprets_carriage_return_and_line_feed() {
         let mut terminal = TerminalEmulator::new(4, 12, 100);
-        terminal.process(b"hello\\r\\nworld");
+        terminal.process(b"hello\r\nworld");
         let snapshot = terminal.snapshot();
         assert!(snapshot.contents.contains("hello"));
         assert!(snapshot.contents.contains("world"));
@@ -94,7 +94,7 @@ mod tests {
     #[test]
     fn parser_state_survives_split_escape_sequences() {
         let mut terminal = TerminalEmulator::new(4, 12, 100);
-        terminal.process(b"\\x1b[");
+        terminal.process(b"\x1b[");
         terminal.process(b"2Jready");
         assert!(terminal.snapshot().contents.contains("ready"));
     }
@@ -119,7 +119,7 @@ mod tests {
     #[test]
     fn grid_snapshot_contains_dimensions_cursor_and_cells() {
         let mut terminal = TerminalEmulator::new(2, 8, 10);
-        terminal.process(b"\\x1b[31mred");
+        terminal.process(b"\x1b[31mred");
         let grid: serde_json::Value = serde_json::from_str(&terminal.grid_json()).unwrap();
         assert_eq!(grid["rows"], 2);
         assert_eq!(grid["columns"], 8);
