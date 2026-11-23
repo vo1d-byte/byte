@@ -313,3 +313,10 @@ The terminal renderer now includes an animated cursor outline, and the Rust VT
 engine has a Unicode preservation regression test for CJK and emoji text.
 Full bidirectional shaping, dirty-cell diffs, cell selection/clipboard, and
 device validation remain outstanding.
+
+
+The terminal now sends one full cell-grid frame followed by incremental
+changed-cell deltas with cursor metadata. Android merges deltas into its retained
+grid. The current Rust diff still scans the full grid to detect changes; direct
+dirty tracking and touch/clipboard interaction remain future work. See
+[Terminal Emulator Engine](docs/TERMINAL_EMULATOR_ENGINE.md).
