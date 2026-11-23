@@ -117,6 +117,16 @@ mod tests {
     }
 
     #[test]
+    fn unicode_text_is_preserved_in_screen_snapshot() {
+        let mut terminal = TerminalEmulator::new(3, 16, 10);
+        terminal.process("A界🙂".as_bytes());
+        let contents = terminal.snapshot().contents;
+        assert!(contents.contains("A"));
+        assert!(contents.contains("界"));
+        assert!(contents.contains("🙂"));
+    }
+
+    #[test]
     fn grid_snapshot_contains_dimensions_cursor_and_cells() {
         let mut terminal = TerminalEmulator::new(2, 8, 10);
         terminal.process(b"\x1b[31mred");
