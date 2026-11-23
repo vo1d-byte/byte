@@ -1,0 +1,10 @@
+[package]
+name = "byte_core"
+version = "0.1.0"
+edition = "2021"
+description = "Native systems core for Byte IDE"
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
