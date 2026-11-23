@@ -48,10 +48,13 @@ class TerminalSession(
                 require(workingDirectory.isDirectory) { "Workspace directory is unavailable" }
                 if (NativeTerminalBridge.isAvailable) {
                     val handle = NativeTerminalBridge.nativeCreate("/system/bin/sh", workingDirectory.absolutePath, terminalRows, terminalColumns)
-                    check(handle != 0L) { "Unable to create native PTY session" }
-                    nativeHandle = handle
-                    main.post { if (!closed.get()) onState("Native PTY · shell started · ${terminalRows}×${terminalColumns}") }
-                    pollNative(handle)
+                    if (handle == 0L) {
+                        startPipeFallback()
+                    } else {
+                        nativeHandle = handle
+                        main.post { if (!closed.get()) onState("Native PTY · shell started · ${terminalRows}×${terminalColumns}") }
+                        pollNative(handle)
+                    }
                 } else {
                     startPipeFallback()
                 }
