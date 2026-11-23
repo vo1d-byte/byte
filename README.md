@@ -79,6 +79,10 @@ Open the repository root in Android Studio, allow Gradle to sync, install the re
 
 Build the Rust core from the core directory with cargo test and cargo build. The initial crate is host-testable. Android cross-compilation and JNI packaging are follow-up integration tasks requiring the Android NDK toolchain.
 
+## Mobile interaction design
+
+The Android workspace follows the supplied 14-screen mobile IDE brief: editor-first portrait layout, an output drawer with collapsed/normal/expanded states, persistent file tabs, contextual code and terminal key rows, a cursor-pad concept, thumb-reachable quick actions, and a landscape output/editor split. See [Mobile IDE Interaction Specification](docs/MOBILE_IDE_INTERACTION_SPEC.md) for the detailed behavior and implementation status. The current UI is an interaction prototype; OS keyboard visibility, true drag/peek behavior, persistent caret/selection, and production backends are still pending.
+
 ## Design principles
 
 1. Android-native first: respect Android lifecycle, storage, permission, and background execution constraints.
