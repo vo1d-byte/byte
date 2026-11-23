@@ -23,12 +23,14 @@ class TerminalSession(
     private val main = Handler(Looper.getMainLooper())
     private val io: ExecutorService = Executors.newCachedThreadPool()
     private val closed = AtomicBoolean(false)
+    private val starting = AtomicBoolean(false)
     @Volatile private var process: Process? = null
     @Volatile private var writer: BufferedWriter? = null
 
     fun start() {
+        if (closed.get() || !starting.compareAndSet(false, true)) return
         io.execute {
-            if (closed.get() || process != null) return@execute
+            if (closed.get() || process != null) { starting.set(false); return@execute }
             try {
                 require(workingDirectory.isDirectory) { "Workspace directory is unavailable" }
                 val shell = File("/system/bin/sh")
@@ -38,6 +40,7 @@ class TerminalSession(
                     .redirectErrorStream(true)
                     .start()
                 process = child
+                starting.set(false)
                 writer = BufferedWriter(OutputStreamWriter(child.outputStream, Charsets.UTF_8))
                 main.post { if (!closed.get()) onState("Shell started · ${workingDirectory.name}") }
                 io.execute {
@@ -60,6 +63,7 @@ class TerminalSession(
                     if (!closed.get()) main.post { onState("Shell exited ${code ?: ""}") }
                 }
             } catch (error: Exception) {
+                starting.set(false)
                 main.post { if (!closed.get()) onState("Shell unavailable: ${error.message}") }
             }
         }
