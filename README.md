@@ -245,3 +245,18 @@ See [Language Package Registry UI](docs/LANGUAGE_PACKAGE_REGISTRY_UI.md).
 - [ ] Run Cargo tests, Gradle build, and Android device validation.
 
 See [Native Execution and Process Manager](docs/NATIVE_EXECUTION_PROCESS_MANAGER.md).
+
+
+### Native PTY terminal milestone
+- [x] Add a Rust PTY engine using openpty, controlling-terminal setup, and a dedicated output reader.
+- [x] Add PTY input, resize, process liveness, foreground process-group signals, and cleanup APIs.
+- [x] Expose PTY session lifecycle through JNI.
+- [x] Prefer the native PTY from Kotlin when libbyte_core is available; retain a pipe-backed fallback.
+- [x] Route terminal Tab, Escape, arrow keys, and Ctrl+C shortcut actions to the terminal session.
+- [x] Propagate terminal panel dimensions to the PTY window size.
+- [ ] Configure cargo-ndk and package libbyte_core.so for Android ABIs.
+- [ ] Compile and test Rust/JNI code on host and Android devices.
+- [ ] Implement a full ANSI/VT100 screen-buffer renderer and terminal tabs.
+- [ ] Validate shell job control, resize behavior, signal delivery, and lifecycle under real device workloads.
+
+See [Native PTY Terminal](docs/NATIVE_PTY_TERMINAL.md).
