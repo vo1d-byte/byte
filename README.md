@@ -298,7 +298,8 @@ still pending, and the pipe fallback is not a full VT terminal.
 - [x] Serialize VT screen cells, colors, style flags, dimensions, and cursor metadata in Rust.
 - [x] Expose full-grid snapshots through JNI and poll them from Kotlin.
 - [x] Draw native VT cells and cursor outline using an Android Canvas renderer.
-- [ ] Dirty-cell updates, cursor blink/modes, wide-Unicode layout, cell-based selection/copy, and real-device validation.
+- [x] Touch-drag cell selection with Android clipboard copy/paste wired to PTY input.
+- [ ] Word/line selection handles, wide-Unicode-aware selection, cursor modes, and real-device validation.
 
 See [Terminal Emulator Engine](docs/TERMINAL_EMULATOR_ENGINE.md).
 
