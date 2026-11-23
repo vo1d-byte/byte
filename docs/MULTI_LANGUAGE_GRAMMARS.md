@@ -1,30 +1,36 @@
 # Multi-language Grammar Registry
 
-## Scope
+## Compiled grammar catalog
 
-Byte now has a central Rust registry for the grammars compiled into the native core. Each descriptor provides a stable language ID, canonical name, display name, file extensions, and comment delimiters. Callers can resolve a language by name or infer it from a file path, then request a configured Tree-sitter parser without depending on a language-specific constructor.
+The Rust core now registers five Tree-sitter grammars:
 
-## Compiled grammar coverage in this stage
-
-| Language | Extensions | Status |
+| Language | File extensions | Registry status |
 |---|---|---|
 | Kotlin | `.kt`, `.kts` | Compiled |
 | Rust | `.rs` | Compiled |
+| Python | `.py`, `.pyi` | Compiled |
+| JavaScript | `.js`, `.mjs`, `.cjs`, `.jsx` | Compiled |
+| TypeScript | `.ts`, `.tsx` | Compiled |
 
-The registry API is designed to add further compiled or separately packaged grammar providers. It does not claim support for Python, JavaScript, TypeScript, C/C++, HTML, CSS, JSON, or Bash yet.
+The registry exposes descriptors with canonical name, display name, extensions, and comment delimiters. It resolves aliases and file extensions (case-insensitively), constructs a configured Tree-sitter parser, and parses source.
+
+## Important integration boundary
+
+This stage expands the Rust grammar registry and parser factory. The Android editor session is still connected to the Kotlin-specific syntax JNI bridge. Therefore Python, JavaScript, TypeScript and Rust are available to the Rust registry API, but are not yet automatically selected by Android editor tabs and do not yet have language-specific highlighting queries in the Compose editor.
 
 ## API
 
-- `languages()`: list installed descriptors.
+- `languages()`: list compiled language descriptors.
 - `language_by_name(name)`: resolve canonical names and aliases.
-- `language_for_path(path)`: detect grammar from file extension.
-- `create_parser(name)`: create and configure a Tree-sitter parser.
-- `parse(name, source)`: parse a source string.
+- `language_for_path(path)`: detect a grammar from the file extension.
+- `grammar(id)`: obtain the compiled Tree-sitter language.
+- `create_parser(name)`: create and configure a parser.
+- `parse(name, source)`: parse source text.
 
-## Security and packaging boundary
+## Security
 
-This registry does not download or execute grammar code. A future downloadable grammar catalog must use signed manifests, pinned hashes, ABI compatibility checks, architecture-aware packages, and explicit user consent before installation. Dynamically loading arbitrary shared libraries from a project directory is intentionally not supported.
+All grammars in this stage are compiled into the native library. No grammar code is downloaded or dynamically loaded. Future downloadable language packs must use signed manifests, pinned hashes, ABI compatibility checks, and explicit user consent.
 
 ## Validation
 
-Unit tests cover alias resolution, extension detection, Kotlin and Rust parsing, and unknown-language rejection. Cargo tests and Android builds have not been run in this environment.
+Unit tests cover name aliases, extension detection (including case-insensitive extensions), parser creation, and sample parsing for all five grammars. Cargo tests and Android builds have not been executed in this environment.
