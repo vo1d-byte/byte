@@ -59,7 +59,9 @@ private fun EditorFirstWorkspace() {
     var file by remember { mutableStateOf("Main.kt") }
     val editorSession = remember(file) { EditorSession("fun main() {\n    println(\"Hello, Byte!\")\n}", file) }
     var editorValue by remember(editorSession) { mutableStateOf(editorSession.value) }
-    val dirty = editorSession.isDirty
+    var editorUiRevision by remember { mutableIntStateOf(0) }
+    val dirty = remember(editorUiRevision) { editorSession.isDirty }
+    DisposableEffect(editorSession) { onDispose { editorSession.close() } }
     var activeTab by remember { mutableStateOf(OutputTab.OUTPUT) }
     var panelSize by remember { mutableStateOf(PanelSize.NORMAL) }
     var actionLayer by remember { mutableStateOf(0) }
@@ -80,9 +82,10 @@ private fun EditorFirstWorkspace() {
                 }
                 Column(Modifier.weight(1f).fillMaxHeight()) {
                     FileTabs(file, dirty, { file = it }, {})
-                    EditorArea(editorValue, { next ->
+                    ByteCodeEditor(editorValue, { next ->
                         editorValue = next
                         editorSession.applyValue(next)
+                        editorUiRevision++
                     }, Modifier.weight(1f))
                     CodeKeyRow(activeTab == OutputTab.TERMINAL, { token ->
                         if (token == "Cursor") showCursorPad = !showCursorPad
@@ -104,8 +107,8 @@ private fun EditorFirstWorkspace() {
                         outputText, terminalInput, { terminalInput = it }, landscape = false,
                         modifier = Modifier.fillMaxWidth().weight(if (panelSize == PanelSize.EXPANDED) 0.8f else 0.25f))
                 }
-                FileTabs(file, dirty, { file = it; dirty = false }, { dirty = true })
-                EditorArea(editorValue, { next -> editorValue = next; editorSession.applyValue(next) }, Modifier.weight(1f))
+                FileTabs(file, dirty, { file = it }, {})
+                ByteCodeEditor(editorValue, { next -> editorValue = next; editorSession.applyValue(next); editorUiRevision++ }, Modifier.weight(1f))
                 if (showCursorPad) CursorPad(onClose = { showCursorPad = false })
                 else CodeKeyRow(activeTab == OutputTab.TERMINAL, { token ->
                     if (token == "Cursor") showCursorPad = true
@@ -221,22 +224,6 @@ private fun FileTabs(file: String, dirty: Boolean, onSelect: (String) -> Unit, o
         IconButton(onClick = { onSelect("Untitled.kt"); onDirty() }, modifier = Modifier.size(44.dp)) {
             Icon(Icons.Default.Add, "New file", tint = Accent)
         }
-    }
-}
-
-@Composable
-private fun EditorArea(value: TextFieldValue, onValue: (TextFieldValue) -> Unit, modifier: Modifier) {
-    Column(modifier.fillMaxWidth().background(Canvas).padding(top = 12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("KOTLIN", color = Accent, fontSize = 10.sp, letterSpacing = 1.5.sp)
-            Spacer(Modifier.weight(1f))
-            Text("Autosave enabled", color = Muted, fontSize = 10.sp)
-        }
-        Spacer(Modifier.height(12.dp))
-        BasicTextField(value = value, onValueChange = onValue,
-            modifier = Modifier.fillMaxSize().padding(bottom = 8.dp),
-            textStyle = TextStyle(color = TextMain, fontFamily = FontFamily.Monospace,
-                fontSize = 14.sp, lineHeight = 23.sp))
     }
 }
 
