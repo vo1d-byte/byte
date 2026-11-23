@@ -54,6 +54,7 @@ class TerminalSession(
                     startPipeFallback()
                 }
             } catch (error: Exception) {
+                started = false
                 main.post { if (!closed.get()) onState("Terminal unavailable: ${error.message}") }
             }
         }
@@ -65,7 +66,14 @@ class TerminalSession(
             if (output.isNotEmpty()) main.post { if (!closed.get()) onOutput(output) }
             val running = runCatching { NativeTerminalBridge.nativeIsRunning(handle) }.getOrDefault(false)
             if (!running) {
+                // Allow the PTY reader thread to deliver bytes written immediately before exit.
+                repeat(3) {
+                    try { Thread.sleep(20) } catch (_: InterruptedException) { return }
+                    val tail = runCatching { NativeTerminalBridge.nativePoll(handle) }.getOrDefault("")
+                    if (tail.isNotEmpty()) main.post { if (!closed.get()) onOutput(tail) }
+                }
                 nativeHandle = 0L
+                started = false
                 main.post { if (!closed.get()) onState("PTY process exited") }
                 break
             }
@@ -91,6 +99,7 @@ class TerminalSession(
         }
         val code = runCatching { child.waitFor() }.getOrNull()
         fallbackProcess = null
+        started = false
         main.post { if (!closed.get()) onState("Shell exited ${code ?: ""}") }
     }
 
