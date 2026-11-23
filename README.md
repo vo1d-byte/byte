@@ -233,3 +233,15 @@ See [Toolchain Manager](docs/TOOLCHAIN_MANAGER.md).
 - [ ] Populate reviewed packages and run Gradle/device validation.
 
 See [Language Package Registry UI](docs/LANGUAGE_PACKAGE_REGISTRY_UI.md).
+
+### Native execution and Android terminal
+- [x] Add Rust process supervisor with argument-safe spawn, stdin, stdout/stderr streaming, exit events, and termination.
+- [x] Add host unit tests for invalid process specifications and process output capture.
+- [x] Add a persistent Android app-private system-shell session using ProcessBuilder.
+- [x] Connect shell output and command submission to the Compose Terminal panel.
+- [ ] Replace piped shell I/O with a real PTY for terminal control, job control, resize, and foreground signal delivery.
+- [ ] Wire Rust ProcessManager through JNI and use it for build/task execution.
+- [ ] Add process resource monitoring, consent prompts, and hardened execution isolation.
+- [ ] Run Cargo tests, Gradle build, and Android device validation.
+
+See [Native Execution and Process Manager](docs/NATIVE_EXECUTION_PROCESS_MANAGER.md).
