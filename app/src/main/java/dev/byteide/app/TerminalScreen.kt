@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -160,10 +162,12 @@ fun TerminalScreen(
                 var bg = gridColor(cell.optJSONArray("b"), TERMINAL_BACKGROUND)
                 val flags = cell.optInt("a", 0)
                 if (flags and 8 != 0) { val swap = fg; fg = bg; bg = swap }
+                val text = cell.optString("t", " ")
+                val cellColumns = cell.optInt("w", if (text.isEmpty()) 0 else 1).coerceIn(0, 2)
                 if (bg != TERMINAL_BACKGROUND) {
                     paint.color = bg
                     paint.style = Paint.Style.FILL
-                    canvas.drawRect(x, y, x + cellWidth + 0.5f, y + cellHeight, paint)
+                    canvas.drawRect(x, y, x + cellWidth * maxOf(cellColumns, 1) + 0.5f, y + cellHeight, paint)
                 }
                 paint.color = fg
                 paint.style = Paint.Style.FILL
@@ -172,8 +176,6 @@ fun TerminalScreen(
                     (if (flags and 1 != 0) Typeface.BOLD else Typeface.NORMAL) or
                         (if (flags and 2 != 0) Typeface.ITALIC else Typeface.NORMAL)
                 )
-                val text = cell.optString("t", " ")
-                val cellColumns = cell.optInt("w", if (text.isEmpty()) 0 else 1).coerceIn(0, 2)
                 if (text.isNotEmpty() && cellColumns > 0) {
                     // Draw a contextual run, not one glyph per cell: Android can then
                     // join Arabic letters and shape combining marks across cell boundaries.
@@ -243,7 +245,15 @@ fun TerminalScreen(
                 if (right > left) {
                     paint.color = 0x665B83D6
                     paint.style = Paint.Style.FILL
-                    canvas.drawRect(left * cellWidth, r * cellHeight, right * cellWidth, (r + 1) * cellHeight, paint)
+                    var visualRight = right
+                    // Include the continuation column when a selected range ends on a wide glyph.
+                    if (right < cells.length()) {
+                        val previous = cells.optJSONObject(right - 1)
+                        if (previous != null && previous.optInt("w", 1) == 2) {
+                            visualRight = minOf(cells.length(), right + 1)
+                        }
+                    }
+                    canvas.drawRect(left * cellWidth, r * cellHeight, visualRight * cellWidth, (r + 1) * cellHeight, paint)
                 }
             }
         }
@@ -291,7 +301,14 @@ fun TerminalScreen(
                     val to = if (r == lastRow) lastColumn else cells.length() - 1
                     val left = minOf(from, to).coerceIn(0, cells.length())
                     val right = (maxOf(from, to) + 1).coerceIn(left, cells.length())
-                    for (c in left until right) output.append(cells.optJSONObject(c)?.optString("t", " ") ?: " ")
+                    for (c in left until right) {
+                        val selectedCell = cells.optJSONObject(c) ?: continue
+                        val selectedText = selectedCell.optString("t", " ")
+                        val selectedWidth = selectedCell.optInt("w", if (selectedText.isEmpty()) 0 else 1)
+                        // Empty width-zero cells are wide-glyph continuation columns, not spaces.
+                        if (selectedWidth > 0 && selectedText.isNotEmpty()) output.append(selectedText)
+                        else if (selectedWidth > 0) output.append(' ')
+                    }
                     if (r != lastRow) output.append('\n')
                 }
                 onSelectionChanged(output.toString().trimEnd())
