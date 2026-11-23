@@ -236,13 +236,14 @@ private fun EditorFirstWorkspace() {
                 confirmButton = { TextButton(onClick = { showFiles = false }) { Text("Close") } })
         }
         if (showToolchains) {
-            languageCatalog.onSuccess { catalog ->
+            val catalog = languageCatalog.getOrNull()
+            if (catalog != null) {
                 ToolchainManagerDialog(catalog, toolchainInstaller) { showToolchains = false }
-            }.onFailure { catalogError ->
+            } else {
                 AlertDialog(
                     onDismissRequest = { showToolchains = false },
                     title = { Text("Language catalog unavailable") },
-                    text = { Text(catalogError.message ?: "Unable to load language catalog.") },
+                    text = { Text(languageCatalog.exceptionOrNull()?.message ?: "Unable to load language catalog.") },
                     confirmButton = { TextButton(onClick = { showToolchains = false }) { Text("Close") } }
                 )
             }
