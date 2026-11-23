@@ -15,6 +15,8 @@ object NativeTerminalBridge {
     @JvmStatic external fun nativeCreate(program: String, workingDirectory: String, rows: Int, columns: Int): Long
     @JvmStatic external fun nativeWrite(handle: Long, input: String): Boolean
     @JvmStatic external fun nativePoll(handle: Long): String
+    @JvmStatic external fun nativePollScreen(handle: Long): String
+    @JvmStatic external fun nativeCursorInfo(handle: Long): String
     @JvmStatic external fun nativeIsRunning(handle: Long): Boolean
     @JvmStatic external fun nativeResize(handle: Long, rows: Int, columns: Int): Boolean
     @JvmStatic external fun nativeSignal(handle: Long, signal: Int): Boolean
@@ -39,6 +41,7 @@ class TerminalSession(
     @Volatile private var started = false
     @Volatile private var terminalRows = 24
     @Volatile private var terminalColumns = 80
+    private val fallbackOutput = StringBuilder()
 
     fun start() {
         if (closed.get() || started) return
@@ -67,7 +70,7 @@ class TerminalSession(
 
     private fun pollNative(handle: Long) {
         while (!closed.get() && nativeHandle == handle) {
-            val output = runCatching { NativeTerminalBridge.nativePoll(handle) }.getOrDefault("")
+            val output = runCatching { NativeTerminalBridge.nativePollScreen(handle) }.getOrDefault("")
             if (output.isNotEmpty()) main.post { if (!closed.get()) onOutput(output) }
             val running = runCatching { NativeTerminalBridge.nativeIsRunning(handle) }.getOrDefault(false)
             if (!running) {
@@ -99,7 +102,7 @@ class TerminalSession(
                 val count = reader.read(buffer)
                 if (count < 0) break
                 val chunk = String(buffer, 0, count)
-                main.post { if (!closed.get()) onOutput(chunk) }
+                fallbackOutput.append(chunk)\n                if (fallbackOutput.length > 24000) fallbackOutput.delete(0, fallbackOutput.length - 24000)\n                val snapshot = fallbackOutput.toString()\n                main.post { if (!closed.get()) onOutput(snapshot) }
             }
         }
         val code = runCatching { child.waitFor() }.getOrNull()
