@@ -13,7 +13,7 @@ use std::thread;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PtyUpdate {
-    pub output: String,
+    pub output: Vec<u8>,
     pub running: bool,
     pub exit_code: Option<i32>,
 }
@@ -21,7 +21,7 @@ pub struct PtyUpdate {
 pub struct PtySession {
     child: Child,
     master: File,
-    output_rx: Receiver<String>,
+    output_rx: Receiver<Vec<u8>>,
     finished: bool,
     exit_code: Option<i32>,
 }
@@ -70,14 +70,14 @@ impl PtySession {
         drop(pair.slave);
 
         let mut reader = master.try_clone().map_err(|e| format!("PTY reader clone failed: {e}"))?;
-        let (tx, output_rx) = mpsc::channel();
+        let (tx, output_rx) = mpsc::channel::<Vec<u8>>();
         thread::Builder::new().name("byte-pty-reader".into()).spawn(move || {
             let mut buffer = [0_u8; 8192];
             loop {
                 match reader.read(&mut buffer) {
                     Ok(0) => break,
                     Ok(count) => {
-                        if tx.send(String::from_utf8_lossy(&buffer[..count]).into_owned()).is_err() { break; }
+                        if tx.send(buffer[..count].to_vec()).is_err() { break; }
                     }
                     Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
                     // Linux PTY masters commonly return EIO after the slave closes.
@@ -131,8 +131,8 @@ impl PtySession {
     }
 
     pub fn poll(&mut self) -> PtyUpdate {
-        let mut output = String::new();
-        while let Ok(chunk) = self.output_rx.try_recv() { output.push_str(&chunk); }
+        let mut output = Vec::new();
+        while let Ok(chunk) = self.output_rx.try_recv() { output.extend_from_slice(&chunk); }
         if !self.finished {
             match self.child.try_wait() {
                 Ok(Some(status)) => {
@@ -189,7 +189,7 @@ mod tests {
         let mut output = String::new();
         for _ in 0..100 {
             let update = session.poll();
-            output.push_str(&update.output);
+            output.push_str(&String::from_utf8_lossy(&update.output));
             if !update.running { break; }
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
