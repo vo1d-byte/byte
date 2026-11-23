@@ -86,7 +86,7 @@ private fun EditorFirstWorkspace() {
                         editorValue = next
                         editorSession.applyValue(next)
                         editorUiRevision++
-                    }, Modifier.weight(1f))
+                    }, Modifier.weight(1f), editorSession.syntaxSpans)
                     CodeKeyRow(activeTab == OutputTab.TERMINAL, { token ->
                         if (token == "Cursor") showCursorPad = !showCursorPad
                         else {
