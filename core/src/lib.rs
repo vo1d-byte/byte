@@ -4,6 +4,7 @@ pub mod editor;
 pub mod jni_bridge;
 pub mod syntax;
 pub mod syntax_jni;
+pub mod grammar_registry;
 
 pub const CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
