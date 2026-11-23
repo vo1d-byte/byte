@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.platform.LocalContext
+import java.io.File
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -58,6 +60,19 @@ private enum class PanelSize { COLLAPSED, NORMAL, EXPANDED }
 private fun EditorFirstWorkspace() {
     var file by remember { mutableStateOf("Main.kt") }
     val editorSession = remember(file) { EditorSession("fun main() {\n    println(\"Hello, Byte!\")\n}", file) }
+    val context = LocalContext.current
+    val workspaceRoot = remember { File(context.filesDir, "workspace").apply { mkdirs() } }
+    val toolchainsRoot = remember { File(context.filesDir, "toolchains").apply { mkdirs() } }
+    val lspWorkspace = remember {
+        LspWorkspaceManager(toolchainsRoot = toolchainsRoot, workspaceRoot = workspaceRoot)
+    }
+    val documentUri = remember(file, workspaceRoot) { File(workspaceRoot, file).toURI().toString() }
+    val lspController = remember(editorSession, lspWorkspace, documentUri) {
+        LspEditorController(editorSession, lspWorkspace, documentUri, "kotlin")
+    }
+    val diagnostics = lspWorkspace.snapshot.diagnosticsByUri[documentUri].orEmpty()
+    DisposableEffect(lspWorkspace) { onDispose { lspWorkspace.close() } }
+    DisposableEffect(lspController) { onDispose { lspController.close() } }
     var editorValue by remember(editorSession) { mutableStateOf(editorSession.value) }
     var editorUiRevision by remember { mutableIntStateOf(0) }
     val dirty = remember(editorUiRevision) { editorSession.isDirty }
@@ -78,15 +93,42 @@ private fun EditorFirstWorkspace() {
             Row(Modifier.fillMaxSize().padding(10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.fillMaxHeight().fillMaxWidth(0.34f)) {
                     OutputPanel(activeTab, { activeTab = it }, panelSize, { panelSize = it }, error,
-                        outputText, terminalInput, { terminalInput = it }, landscape = true)
+                        outputText, terminalInput, { terminalInput = it }, landscape = true,
+                        diagnostics = diagnostics,
+                        onDiagnosticClick = { diagnostic ->
+                            val target = diagnostic.range.start
+                            val offset = editorValue.text.split("\n").take(target.line).sumOf { it.length + 1 } +
+                                target.character
+                            val safe = offset.coerceIn(0, editorValue.text.length)
+                            editorSession.restoreSelection(TextRange(safe))
+                            editorValue = editorSession.value
+                        })
                 }
                 Column(Modifier.weight(1f).fillMaxHeight()) {
                     FileTabs(file, dirty, { file = it }, {})
-                    ByteCodeEditor(editorValue, { next ->
-                        editorValue = next
-                        editorSession.applyValue(next)
-                        editorUiRevision++
-                    }, Modifier.weight(1f), editorSession.syntaxSpans)
+                    Box(Modifier.weight(1f)) {
+                        ByteCodeEditor(editorValue, { next ->
+                            editorValue = next
+                            editorSession.applyValue(next)
+                            lspController.onEditorValueChanged(next)
+                            editorUiRevision++
+                        }, Modifier.fillMaxSize(), editorSession.syntaxSpans)
+                        LspCompletionPopup(
+                            items = lspController.uiState.completions,
+                            visible = lspController.uiState.completionVisible,
+                            onSelect = { item ->
+                                lspController.selectCompletion(item)
+                                editorValue = editorSession.value
+                                editorUiRevision++
+                            },
+                            onDismiss = { lspController.dismissCompletion() },
+                            modifier = Modifier.align(Alignment.BottomStart).padding(8.dp)
+                        )
+                        LspHoverCard(
+                            hover = lspController.uiState.hover,
+                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                        )
+                    }
                     CodeKeyRow(activeTab == OutputTab.TERMINAL, { token ->
                         if (token == "Cursor") showCursorPad = !showCursorPad
                         else {
@@ -105,10 +147,41 @@ private fun EditorFirstWorkspace() {
                 } else {
                     OutputPanel(activeTab, { activeTab = it }, panelSize, { panelSize = it }, error,
                         outputText, terminalInput, { terminalInput = it }, landscape = false,
-                        modifier = Modifier.fillMaxWidth().weight(if (panelSize == PanelSize.EXPANDED) 0.8f else 0.25f))
+                        modifier = Modifier.fillMaxWidth().weight(if (panelSize == PanelSize.EXPANDED) 0.8f else 0.25f),
+                        diagnostics = diagnostics,
+                        onDiagnosticClick = { diagnostic ->
+                            val target = diagnostic.range.start
+                            val offset = editorValue.text.split("\n").take(target.line).sumOf { it.length + 1 } +
+                                target.character
+                            val safe = offset.coerceIn(0, editorValue.text.length)
+                            editorSession.restoreSelection(TextRange(safe))
+                            editorValue = editorSession.value
+                        })
                 }
                 FileTabs(file, dirty, { file = it }, {})
-                ByteCodeEditor(editorValue, { next -> editorValue = next; editorSession.applyValue(next); editorUiRevision++ }, Modifier.weight(1f), editorSession.syntaxSpans)
+                Box(Modifier.weight(1f)) {
+                    ByteCodeEditor(editorValue, { next ->
+                        editorValue = next
+                        editorSession.applyValue(next)
+                        lspController.onEditorValueChanged(next)
+                        editorUiRevision++
+                    }, Modifier.fillMaxSize(), editorSession.syntaxSpans)
+                    LspCompletionPopup(
+                        items = lspController.uiState.completions,
+                        visible = lspController.uiState.completionVisible,
+                        onSelect = { item ->
+                            lspController.selectCompletion(item)
+                            editorValue = editorSession.value
+                            editorUiRevision++
+                        },
+                        onDismiss = { lspController.dismissCompletion() },
+                        modifier = Modifier.align(Alignment.BottomStart).padding(8.dp)
+                    )
+                    LspHoverCard(
+                        hover = lspController.uiState.hover,
+                        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                    )
+                }
                 if (showCursorPad) CursorPad(onClose = { showCursorPad = false })
                 else CodeKeyRow(activeTab == OutputTab.TERMINAL, { token ->
                     if (token == "Cursor") showCursorPad = true
@@ -161,7 +234,9 @@ private fun EditorFirstWorkspace() {
 private fun OutputPanel(
     tab: OutputTab, onTab: (OutputTab) -> Unit, size: PanelSize, onSize: (PanelSize) -> Unit,
     error: Boolean, output: String, terminalInput: String, onTerminalInput: (String) -> Unit,
-    landscape: Boolean, modifier: Modifier = Modifier
+    landscape: Boolean, modifier: Modifier = Modifier,
+    diagnostics: List<LspDiagnostic> = emptyList(),
+    onDiagnosticClick: (LspDiagnostic) -> Unit = {}
 ) {
     Column(modifier.background(Surface, RoundedCornerShape(16.dp)).padding(8.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -178,7 +253,7 @@ private fun OutputPanel(
             horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             OutputTab.entries.forEach { item ->
                 FilterChip(selected = tab == item, onClick = { onTab(item) },
-                    label = { Text(if (item == OutputTab.PROBLEMS) "Problems 0" else item.label, fontSize = 11.sp) })
+                    label = { Text(if (item == OutputTab.PROBLEMS) "Problems ${diagnostics.size}" else item.label, fontSize = 11.sp) })
             }
         }
         Spacer(Modifier.height(6.dp))
@@ -190,6 +265,8 @@ private fun OutputPanel(
                     if (terminalInput.isEmpty()) Text("Terminal backend not connected", color = Muted, fontSize = 12.sp)
                     inner()
                 })
+        } else if (tab == OutputTab.PROBLEMS) {
+            LspProblemsPanel(diagnostics = diagnostics, onSelect = onDiagnosticClick)
         } else {
             Text(output, color = Muted, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
         }
