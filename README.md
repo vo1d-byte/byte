@@ -101,6 +101,14 @@ The Android workspace follows the supplied 14-screen mobile IDE brief: editor-fi
 - [ ] Automated Android and Rust CI builds.
 - [ ] Device ABI matrix and native packaging.
 
+### Editor engine (first implementation)
+- [x] Rope-backed Rust text document with Unicode-aware scalar offsets.
+- [x] Selection, cursor movement, replacement, backspace, and forward delete.
+- [x] Edit-based undo/redo history and revision tracking.
+- [x] Kotlin editor-session model preserving UTF-16 selection and viewport state.
+- [ ] JNI adapter and Android ABI packaging.
+- [ ] Grapheme-aware navigation, grouped undo, multi-cursor, syntax parsing, and LSP.
+
 ### Workspace and editing
 - [ ] Project creation and workspace persistence.
 - [ ] File explorer, file operations, search, and tabs.
