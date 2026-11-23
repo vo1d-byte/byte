@@ -171,7 +171,8 @@ fun TerminalScreen(
                         (if (flags and 2 != 0) Typeface.ITALIC else Typeface.NORMAL)
                 )
                 val text = cell.optString("t", " ")
-                if (text.isNotEmpty() && text != " ") {
+                val cellColumns = cell.optInt("w", if (text.isEmpty()) 0 else 1).coerceIn(0, 2)
+                if (text.isNotEmpty() && text != " " && cellColumns > 0) {
                     canvas.drawText(text, x, y + baselineOffset, paint)
                 }
                 if (flags and 4 != 0) {
@@ -250,7 +251,7 @@ fun TerminalScreen(
                     val left = minOf(from, to).coerceIn(0, cells.length())
                     val right = (maxOf(from, to) + 1).coerceIn(left, cells.length())
                     for (c in left until right) output.append(cells.optJSONObject(c)?.optString("t", " ") ?: " ")
-                    if (r != maxOf(sr, er)) output.append('\n')
+                    if (r != lastRow) output.append('\n')
                 }
                 onSelectionChanged(output.toString().trimEnd())
             }
