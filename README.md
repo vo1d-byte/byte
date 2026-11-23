@@ -164,3 +164,11 @@ No license has been selected yet. Until a license is added, all rights remain wi
 - [ ] Apply WorkspaceEdit and TextEdit as version-checked undoable editor transactions.
 
 See [LSP Editor Intelligence](docs/LSP_INTELLIGENCE.md).
+
+### LSP Compose UI
+- [x] Reusable completion popup, hover card, diagnostics panel, and error/warning summary components.
+- [ ] Mount components in the workspace and connect live LSP events to Compose state.
+- [ ] Apply completion and WorkspaceEdit through version-checked undoable editor transactions.
+- [ ] Add inline diagnostic decorations and real-server/device tests.
+
+See [LSP Compose UI](docs/LSP_COMPOSE_UI.md).
