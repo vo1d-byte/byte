@@ -79,6 +79,8 @@ pub extern "system" fn Java_dev_byteide_app_NativeTerminalBridge_nativePollGrid(
     let output = sessions().lock().ok()
         .and_then(|mut map| map.get_mut(&(handle as i64)).map(|session| session.poll().output))
         .unwrap_or_default();
+    // Avoid serializing the entire screen on idle polling ticks.
+    if output.is_empty() { return make_string(&mut env, String::new()); }
     let Ok(mut map) = screens().lock() else { return make_string(&mut env, "{}".to_string()); };
     if let Some(screen) = map.get_mut(&(handle as i64)) {
         screen.process(&output);
