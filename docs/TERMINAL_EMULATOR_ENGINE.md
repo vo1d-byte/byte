@@ -152,3 +152,18 @@ and applies each changed-cell record to its local grid state inside a
   block/bar/underline modes are not implemented here.
 - Full build and device validation are still required; no Cargo/Gradle result is
   claimed by this source update.
+
+## Terminal selection and Android clipboard
+
+The Android terminal grid now accepts touch-drag selection in cell coordinates.
+The selected cell text is exposed to the terminal panel, where Copy writes it
+to Android's system clipboard and Paste sends clipboard text to the active
+terminal input stream through the existing PTY write API. The same paste path
+uses the pipe-backed shell writer when native PTY support is unavailable.
+
+Selection is currently a basic rectangular row-span interaction: it does not
+yet provide word/line snapping, long-press handles, wide-cell/grapheme-aware
+mapping, or selection in the plain-text fallback renderer. Clipboard paste
+sends text as terminal input; applications may interpret pasted control
+characters, so paste should be treated as user-authorized input. Build and
+device validation remain outstanding.
