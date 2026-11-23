@@ -55,13 +55,19 @@ class LspWorkspaceManager(
         require(profile.command.none { it.isBlank() })
         check(!closed) { "Workspace manager is closed" }
         profiles[profile.languageId] = profile
+        // Documents may have been opened before their toolchain finished installing.
+        if (documents.values.any { it.languageId == profile.languageId }) {
+            getOrStart(profile.languageId)
+        }
     }
 
     fun openDocument(uri: String, languageId: String, version: Int, text: String): Boolean {
         if (closed || uri.isBlank() || version < 0) return false
         documents[uri] = OpenDocument(uri, languageId, version, text)
-        val session = getOrStart(languageId) ?: return false
-        return if (session.initialized) session.intelligence.didOpen(uri, languageId, version, text) else true
+        val session = getOrStart(languageId)
+        // Keep the document queued even when its language pack is not installed yet.
+        return session == null || !session.initialized ||
+            session.intelligence.didOpen(uri, languageId, version, text)
     }
 
     fun changeDocument(uri: String, version: Int, text: String): Boolean {
