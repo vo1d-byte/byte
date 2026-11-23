@@ -307,3 +307,9 @@ Terminal polling now avoids regenerating and transferring a full JSON grid on
 idle ticks after the initial frame. Full-grid snapshots are still used whenever
 new PTY bytes arrive; dirty-cell updates and wide-Unicode/cursor interaction
 remain future work. See [Terminal Emulator Engine](docs/TERMINAL_EMULATOR_ENGINE.md).
+
+
+The terminal renderer now includes an animated cursor outline, and the Rust VT
+engine has a Unicode preservation regression test for CJK and emoji text.
+Full bidirectional shaping, dirty-cell diffs, cell selection/clipboard, and
+device validation remain outstanding.
