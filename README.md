@@ -195,3 +195,15 @@ See [LSP Workspace Integration](docs/LSP_WORKSPACE_INTEGRATION.md).
 - [ ] Run Gradle compilation and Android device tests.
 
 See [Live Editor LSP](docs/LIVE_EDITOR_LSP.md).
+
+### Actual editor UI integration
+- [x] Mount LSP completion popup and hover card over the editor surface.
+- [x] Connect active document edits to the LSP editor controller.
+- [x] Replace the static Problems tab with the LSP diagnostics panel and count.
+- [x] Navigate from a diagnostic to its reported start position.
+- [x] Queue documents until a language-server profile is registered.
+- [ ] Install/register verified language-server profiles; validate real completion and diagnostics.
+- [ ] Add hover and definition editor actions, textEdit/snippet support, and inline diagnostic decorations.
+- [ ] Run Gradle compilation and Android device tests.
+
+See [Actual Editor UI Integration](docs/ACTUAL_EDITOR_UI_INTEGRATION.md).
