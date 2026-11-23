@@ -325,9 +325,8 @@ private fun OutputPanel(
         Spacer(Modifier.height(6.dp))
         if (tab == OutputTab.TERMINAL) {
             Text(terminalState, color = Muted, fontSize = 10.sp)
-            Text(
-                output.takeLast(12000).ifBlank { "Terminal output will appear here." },
-                color = TextMain, fontFamily = FontFamily.Monospace, fontSize = 11.sp,
+            TerminalScreen(
+                output = output,
                 modifier = Modifier.weight(1f, fill = false).fillMaxWidth()
             )
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
