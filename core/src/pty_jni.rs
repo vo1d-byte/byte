@@ -20,6 +20,9 @@ fn sessions() -> &'static Mutex<HashMap<i64, PtySession>> {
 fn screens() -> &'static Mutex<HashMap<i64, TerminalEmulator>> {
     SCREENS.get_or_init(|| Mutex::new(HashMap::new()))
 }
+fn initialized_grids() -> &'static Mutex<HashSet<i64>> {
+    GRID_INITIALIZED.get_or_init(|| Mutex::new(HashSet::new()))
+}
 fn read_string(env: &mut JNIEnv<'_>, value: &JString<'_>) -> Option<String> {
     env.get_string(value).ok().map(|s| s.into())
 }
