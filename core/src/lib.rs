@@ -1,12 +1,13 @@
 //! Byte IDE native core.
 //!
-//! This crate contains platform-independent services. Android UI and platform APIs
-//! remain in Kotlin; performance-sensitive and portable logic belongs here.
+//! The editor document model is independent from Android UI state. Positions are
+//! Unicode scalar-value (Rust char) offsets; adapters must translate UTF-16 editor
+//! offsets at the Kotlin/JNI boundary.
 
-/// Core version exposed to frontends and diagnostics.
+pub mod editor;
+
 pub const CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Return a stable greeting for smoke tests and frontend integration.
 pub fn status_message() -> String {
     format!("Byte Core {CORE_VERSION} is ready")
 }
@@ -17,7 +18,7 @@ mod tests {
 
     #[test]
     fn reports_version() {
-        assert_eq!(CORE_VERSION, "0.1.0");
+        assert_eq!(CORE_VERSION, "0.2.0");
         assert!(status_message().contains("Byte Core"));
     }
 }
