@@ -167,3 +167,13 @@ mapping, or selection in the plain-text fallback renderer. Clipboard paste
 sends text as terminal input; applications may interpret pasted control
 characters, so paste should be treated as user-authorized input. Build and
 device validation remain outstanding.
+
+## Cursor shape controls
+
+The Android terminal renderer now supports user-selectable Block, Bar, and
+Underline cursor shapes. The existing blink animation is retained for all
+three shapes. These controls are a renderer preference; they do not yet mirror
+terminal applications' DECSCUSR cursor-shape escape mode or DECTCEM visibility
+state. The renderer continues to use the cursor coordinates supplied by the
+native VT grid. Full terminal-driven cursor mode synchronization remains future
+compatibility work.
