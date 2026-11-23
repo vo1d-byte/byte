@@ -108,6 +108,22 @@ impl PtySession {
         if result == -1 { Err(format!("Signal delivery failed: {}", std::io::Error::last_os_error())) } else { Ok(()) }
     }
 
+    pub fn is_running(&mut self) -> bool {
+        if self.finished { return false; }
+        match self.child.try_wait() {
+            Ok(Some(status)) => {
+                self.finished = true;
+                self.exit_code = status.code();
+                false
+            }
+            Ok(None) => true,
+            Err(_) => {
+                self.finished = true;
+                false
+            }
+        }
+    }
+
     pub fn poll(&mut self) -> PtyUpdate {
         let mut output = String::new();
         while let Ok(chunk) = self.output_rx.try_recv() { output.push_str(&chunk); }
