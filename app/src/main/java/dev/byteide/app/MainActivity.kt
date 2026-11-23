@@ -153,7 +153,16 @@ private fun EditorFirstWorkspace() {
                     }
                     CodeKeyRow(activeTab == OutputTab.TERMINAL, { token ->
                         if (token == "Cursor") showCursorPad = !showCursorPad
-                        else {
+                        else if (activeTab == OutputTab.TERMINAL) {
+                            when (token) {
+                                "Ctrl+C" -> terminalSession.sendInterruptByte()
+                                "Tab" -> terminalSession.writeInput("\\t")
+                                "↑" -> terminalSession.writeInput("\\u001b[A")
+                                "↓" -> terminalSession.writeInput("\\u001b[B")
+                                "Esc" -> terminalSession.writeInput("\\u001b")
+                                else -> terminalSession.writeInput(token)
+                            }
+                        } else {
                             val next = editorValue.text + token
                             editorValue = TextFieldValue(next, TextRange(next.length))
                             editorSession.applyValue(editorValue)
