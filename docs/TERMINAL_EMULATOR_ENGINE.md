@@ -177,3 +177,20 @@ terminal applications' DECSCUSR cursor-shape escape mode or DECTCEM visibility
 state. The renderer continues to use the cursor coordinates supplied by the
 native VT grid. Full terminal-driven cursor mode synchronization remains future
 compatibility work.
+
+## Unicode cell-width metadata and selection fix
+
+Native cell JSON now includes a display-width field (`w`) calculated with
+Unicode width rules. Ordinary printable cells report one column, East Asian
+wide/full-width glyphs report two columns, and empty continuation cells report
+zero. This gives the Android renderer explicit terminal-column width metadata.
+
+The Android selection extraction now uses the normalized last selected row
+when inserting line separators, removing references to stale row variables
+that could prevent Kotlin compilation. The renderer reads the width metadata
+when deciding whether a cell contains a drawable glyph.
+
+Complete grapheme-cluster shaping and the Unicode Bidirectional Algorithm for
+mixed Arabic/Latin terminal rows are not implemented yet. Arabic joining and
+visual RTL ordering still require row-run shaping and device-level verification.
+Cargo and Gradle builds remain to be run.
