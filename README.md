@@ -113,7 +113,7 @@ The Android workspace follows the supplied 14-screen mobile IDE brief: editor-fi
 - [ ] Project creation and workspace persistence.
 - [ ] File explorer, file operations, search, and tabs.
 - [x] Initial Compose editor rendering with line-number gutter and Kotlin lexical coloring.
-- [x] Kotlin Tree-sitter parser with incremental InputEdit updates and syntax spans.\n- [x] JNI bridge and Compose rendering of native Kotlin syntax spans.\n- [x] Compiled grammar registry with Kotlin and Rust parsers and extension detection.\n- [x] Compiled grammar registry: Kotlin, Rust, Python, JavaScript, and TypeScript.\n- [x] Add path-selected multi-language syntax sessions and unified highlighting spans for Kotlin, Rust, Python, JavaScript, and TypeScript.\n- [ ] Language-specific query captures, full diagnostics UI, and LSP.\n- [ ] LSP diagnostics and language server lifecycle.
+- [x] Kotlin Tree-sitter parser with incremental InputEdit updates and syntax spans.\n- [x] JNI bridge and Compose rendering of native Kotlin syntax spans.\n- [x] Compiled grammar registry with Kotlin and Rust parsers and extension detection.\n- [x] Compiled grammar registry: Kotlin, Rust, Python, JavaScript, and TypeScript.\n- [x] Add path-selected multi-language syntax sessions and unified highlighting spans for Kotlin, Rust, Python, JavaScript, and TypeScript.\n- [x] Path-selected multi-language syntax documents and JNI/Compose integration.\n- [ ] Language-specific query captures, full diagnostics UI, and LSP.\n- [ ] LSP diagnostics and language server lifecycle.
 - [ ] LSP client and language server lifecycle management.
 
 ### Execution and language ecosystems
