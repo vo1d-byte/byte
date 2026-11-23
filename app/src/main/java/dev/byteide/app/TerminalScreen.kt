@@ -16,6 +16,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.dp
@@ -62,8 +64,12 @@ private fun gridColor(value: org.json.JSONArray?, fallback: Int): Int {
 fun TerminalScreen(
     output: String,
     modifier: Modifier = Modifier,
-    maxCharacters: Int = 24000
+    maxCharacters: Int = 24000,
+    onSelectionChanged: (String) -> Unit = {}
 ) {
+    var selectionStart by remember { mutableStateOf<androidx.compose.ui.geometry.Offset?>(null) }
+    var selectionEnd by remember { mutableStateOf<androidx.compose.ui.geometry.Offset?>(null) }
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
     val gridState = remember { mutableStateOf<JSONObject?>(null) }
     val parsedUpdate = remember(output) { runCatching { JSONObject(output) }.getOrNull() }
     LaunchedEffect(parsedUpdate) {
@@ -98,7 +104,13 @@ fun TerminalScreen(
         animationSpec = infiniteRepeatable(tween(550), RepeatMode.Reverse),
         label = "cursor-alpha"
     ).value
-    Canvas(modifier = modifier.fillMaxSize().background(Color(TERMINAL_BACKGROUND))) {
+    Canvas(modifier = modifier.fillMaxSize().background(Color(TERMINAL_BACKGROUND)).pointerInput(displayFrame) {
+        detectDragGestures(
+            onDragStart = { selectionStart = it; selectionEnd = it },
+            onDrag = { change, _ -> selectionEnd = change.position },
+            onDragEnd = { }
+        )
+    }) {
         val canvas = drawContext.canvas.nativeCanvas
         canvas.drawColor(TERMINAL_BACKGROUND)
 
@@ -127,6 +139,28 @@ fun TerminalScreen(
         val cursor = parsed.optJSONObject("cursor")
         val cursorRow = cursor?.optInt("row", -1) ?: -1
         val cursorColumn = cursor?.optInt("column", -1) ?: -1
+        val startPoint = selectionStart
+        val endPoint = selectionEnd
+        if (startPoint != null && endPoint != null && grid.length() > 0) {
+            val startRow = (startPoint.y / cellHeight).toInt().coerceIn(0, grid.length() - 1)
+            val endRow = (endPoint.y / cellHeight).toInt().coerceIn(0, grid.length() - 1)
+            val startCol = (startPoint.x / cellWidth).toInt().coerceAtLeast(0)
+            val endCol = (endPoint.x / cellWidth).toInt().coerceAtLeast(0)
+            val firstRow = minOf(startRow, endRow)
+            val lastRow = maxOf(startRow, endRow)
+            for (r in firstRow..lastRow) {
+                val cells = grid.optJSONArray(r) ?: continue
+                val from = if (r == startRow) startCol else 0
+                val to = if (r == endRow) endCol else cells.length() - 1
+                val left = minOf(from, to).coerceIn(0, cells.length())
+                val right = (maxOf(from, to) + 1).coerceIn(left, cells.length())
+                if (right > left) {
+                    paint.color = 0x665B83D6
+                    canvas.drawRect(left * cellWidth, r * cellHeight, right * cellWidth, (r + 1) * cellHeight, paint)
+                }
+            }
+        }
+
         val cursorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.argb((cursorAlpha * 255).toInt(), 183, 201, 232)
             style = Paint.Style.STROKE
@@ -174,6 +208,41 @@ fun TerminalScreen(
             val left = cursorColumn * cellWidth
             val top = cursorRow * cellHeight
             canvas.drawRect(RectF(left, top, left + cellWidth, top + cellHeight), cursorPaint)
+        }
+    }
+
+    LaunchedEffect(displayFrame, selectionStart, selectionEnd) {
+        val frame = displayFrame
+        val startPoint = selectionStart
+        val endPoint = selectionEnd
+        if (frame == null || startPoint == null || endPoint == null) {
+            onSelectionChanged("")
+        } else {
+            val rows = frame.optJSONArray("grid")
+            if (rows == null || rows.length() == 0) onSelectionChanged("")
+            else {
+                val measurePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
+                    textSize = with(androidx.compose.ui.unit.Density(density)) { 14.dp.toPx() }
+                }
+                val cw = measurePaint.measureText("M").coerceAtLeast(1f)
+                val ch = (measurePaint.fontMetrics.descent - measurePaint.fontMetrics.ascent).coerceAtLeast(1f)
+                val sr = (startPoint.y / ch).toInt().coerceIn(0, rows.length() - 1)
+                val er = (endPoint.y / ch).toInt().coerceIn(0, rows.length() - 1)
+                val sc = (startPoint.x / cw).toInt().coerceAtLeast(0)
+                val ec = (endPoint.x / cw).toInt().coerceAtLeast(0)
+                val output = StringBuilder()
+                for (r in minOf(sr, er)..maxOf(sr, er)) {
+                    val cells = rows.optJSONArray(r) ?: continue
+                    val from = if (r == sr) sc else 0
+                    val to = if (r == er) ec else cells.length() - 1
+                    val left = minOf(from, to).coerceIn(0, cells.length())
+                    val right = (maxOf(from, to) + 1).coerceIn(left, cells.length())
+                    for (c in left until right) output.append(cells.optJSONObject(c)?.optString("t", " ") ?: " ")
+                    if (r != maxOf(sr, er)) output.append('\n')
+                }
+                onSelectionChanged(output.toString().trimEnd())
+            }
         }
     }
 }
