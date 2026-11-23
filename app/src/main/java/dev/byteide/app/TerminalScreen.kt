@@ -150,7 +150,9 @@ fun TerminalScreen(
             val cells = grid.optJSONArray(row) ?: continue
             val y = row * cellHeight
             if (y > size.height) break
+            val shapedColumns = BooleanArray(cells.length())
             for (column in 0 until cells.length()) {
+                if (shapedColumns[column]) continue
                 val cell = cells.optJSONObject(column) ?: continue
                 val x = column * cellWidth
                 if (x > size.width) break
@@ -192,6 +194,9 @@ fun TerminalScreen(
                         if (!sameStyle || nextWidth == 0) break
                         if (nextText.isNotEmpty()) run.append(nextText)
                         nextColumn += maxOf(nextWidth, 1)
+                    }
+                    for (consumed in column until minOf(nextColumn, cells.length())) {
+                        shapedColumns[consumed] = true
                     }
                     val runText = run.toString()
                     if (runText.isNotBlank()) {
