@@ -92,15 +92,30 @@ private fun EditorFirstWorkspace() {
     var keyboardVisible by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf(false) }
     var terminalInput by remember { mutableStateOf("") }
-    var outputText by remember { mutableStateOf("Byte workspace ready. Open a project to begin.") }
+    var outputText by remember { mutableStateOf("Byte workspace ready. Select Terminal to start an Android shell.") }
+    var terminalState by remember { mutableStateOf("Shell stopped") }
+    val terminalSession = remember(workspaceRoot) {
+        TerminalSession(
+            workingDirectory = workspaceRoot,
+            onOutput = { chunk -> outputText = (outputText + chunk).takeLast(24000) },
+            onState = { terminalState = it }
+        )
+    }
+    DisposableEffect(terminalSession) { onDispose { terminalSession.close() } }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Canvas)) {
         val landscape = maxWidth > maxHeight
         if (landscape) {
             Row(Modifier.fillMaxSize().padding(10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.fillMaxHeight().fillMaxWidth(0.34f)) {
-                    OutputPanel(activeTab, { activeTab = it }, panelSize, { panelSize = it }, error,
+                    OutputPanel(activeTab, { next ->
+                        activeTab = next
+                        if (next == OutputTab.TERMINAL) terminalSession.start()
+                    }, panelSize, { panelSize = it }, error,
                         outputText, terminalInput, { terminalInput = it }, landscape = true,
+                        terminalState = terminalState,
+                        onTerminalSubmit = { command -> terminalSession.execute(command); terminalInput = "" },
+                        onTerminalInterrupt = { terminalSession.sendInterruptByte() },
                         diagnostics = diagnostics,
                         onDiagnosticClick = { diagnostic ->
                             val target = diagnostic.range.start
@@ -152,8 +167,14 @@ private fun EditorFirstWorkspace() {
                 if (panelSize == PanelSize.COLLAPSED || keyboardVisible || showCursorPad) {
                     CollapsedPeek(error, file) { panelSize = if (panelSize == PanelSize.COLLAPSED) PanelSize.NORMAL else PanelSize.COLLAPSED }
                 } else {
-                    OutputPanel(activeTab, { activeTab = it }, panelSize, { panelSize = it }, error,
+                    OutputPanel(activeTab, { next ->
+                        activeTab = next
+                        if (next == OutputTab.TERMINAL) terminalSession.start()
+                    }, panelSize, { panelSize = it }, error,
                         outputText, terminalInput, { terminalInput = it }, landscape = false,
+                        terminalState = terminalState,
+                        onTerminalSubmit = { command -> terminalSession.execute(command); terminalInput = "" },
+                        onTerminalInterrupt = { terminalSession.sendInterruptByte() },
                         modifier = Modifier.fillMaxWidth().weight(if (panelSize == PanelSize.EXPANDED) 0.8f else 0.25f),
                         diagnostics = diagnostics,
                         onDiagnosticClick = { diagnostic ->
@@ -256,6 +277,9 @@ private fun OutputPanel(
     tab: OutputTab, onTab: (OutputTab) -> Unit, size: PanelSize, onSize: (PanelSize) -> Unit,
     error: Boolean, output: String, terminalInput: String, onTerminalInput: (String) -> Unit,
     landscape: Boolean, modifier: Modifier = Modifier,
+    terminalState: String = "Shell stopped",
+    onTerminalSubmit: (String) -> Unit = {},
+    onTerminalInterrupt: () -> Unit = {},
     diagnostics: List<LspDiagnostic> = emptyList(),
     onDiagnosticClick: (LspDiagnostic) -> Unit = {}
 ) {
@@ -279,13 +303,27 @@ private fun OutputPanel(
         }
         Spacer(Modifier.height(6.dp))
         if (tab == OutputTab.TERMINAL) {
-            Text("byte@android:~/workspace $", color = Color(0xFF8ED6A5), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
-            BasicTextField(value = terminalInput, onValueChange = onTerminalInput,
-                textStyle = TextStyle(color = TextMain, fontFamily = FontFamily.Monospace, fontSize = 12.sp),
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp), decorationBox = { inner ->
-                    if (terminalInput.isEmpty()) Text("Terminal backend not connected", color = Muted, fontSize = 12.sp)
-                    inner()
-                })
+            Text(terminalState, color = Muted, fontSize = 10.sp)
+            Text(
+                output.takeLast(12000).ifBlank { "Terminal output will appear here." },
+                color = TextMain, fontFamily = FontFamily.Monospace, fontSize = 11.sp,
+                modifier = Modifier.weight(1f, fill = false).fillMaxWidth()
+            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = terminalInput, onValueChange = onTerminalInput,
+                    modifier = Modifier.weight(1f), singleLine = true,
+                    placeholder = { Text("Enter shell command") },
+                    textStyle = TextStyle(color = TextMain, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                )
+                Spacer(Modifier.width(6.dp))
+                IconButton(onClick = { onTerminalSubmit(terminalInput) }, enabled = terminalInput.isNotBlank()) {
+                    Icon(Icons.Default.Send, contentDescription = "Run command", tint = Accent)
+                }
+                IconButton(onClick = onTerminalInterrupt) {
+                    Icon(Icons.Default.Stop, contentDescription = "Send interrupt byte", tint = ErrorRed)
+                }
+            }
         } else if (tab == OutputTab.PROBLEMS) {
             LspProblemsPanel(diagnostics = diagnostics, onSelect = onDiagnosticClick)
         } else {
