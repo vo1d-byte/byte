@@ -292,3 +292,12 @@ per-session Rust VT parser. JNI returns the current screen text to Android, and
 terminal resizing updates both the PTY and parser. This first integration exports
 plain screen contents only; cursor drawing and per-cell style/color export are
 still pending, and the pipe fallback is not a full VT terminal.
+
+
+### Native terminal cell grid
+- [x] Serialize VT screen cells, colors, style flags, dimensions, and cursor metadata in Rust.
+- [x] Expose full-grid snapshots through JNI and poll them from Kotlin.
+- [x] Draw native VT cells and cursor outline using an Android Canvas renderer.
+- [ ] Dirty-cell updates, cursor blink/modes, wide-Unicode layout, cell-based selection/copy, and real-device validation.
+
+See [Terminal Emulator Engine](docs/TERMINAL_EMULATOR_ENGINE.md).
