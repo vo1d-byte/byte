@@ -18,6 +18,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -55,7 +57,9 @@ private enum class PanelSize { COLLAPSED, NORMAL, EXPANDED }
 @Composable
 private fun EditorFirstWorkspace() {
     var file by remember { mutableStateOf("Main.kt") }
-    var code by remember { mutableStateOf("fun main() {\n    println(\"Hello, Byte!\")\n}") }
+    val editorSession = remember(file) { EditorSession("fun main() {\n    println(\"Hello, Byte!\")\n}", file) }
+    var editorValue by remember(editorSession) { mutableStateOf(editorSession.value) }
+    val dirty = editorSession.isDirty
     var activeTab by remember { mutableStateOf(OutputTab.OUTPUT) }
     var panelSize by remember { mutableStateOf(PanelSize.NORMAL) }
     var actionLayer by remember { mutableStateOf(0) }
@@ -77,10 +81,17 @@ private fun EditorFirstWorkspace() {
                 }
                 Column(Modifier.weight(1f).fillMaxHeight()) {
                     FileTabs(file, dirty, { file = it; dirty = false }, { dirty = true })
-                    EditorArea(code, { code = it; dirty = true }, Modifier.weight(1f))
+                    EditorArea(editorValue, { next ->
+                        editorValue = next
+                        editorSession.applyValue(next)
+                    }, Modifier.weight(1f))
                     CodeKeyRow(activeTab == OutputTab.TERMINAL, { token ->
                         if (token == "Cursor") showCursorPad = !showCursorPad
-                        else { code += token; dirty = true }
+                        else {
+                            val next = editorValue.text + token
+                            editorValue = TextFieldValue(next, TextRange(next.length))
+                            editorSession.applyValue(editorValue)
+                        }
                     })
                 }
             }
@@ -211,7 +222,7 @@ private fun FileTabs(file: String, dirty: Boolean, onSelect: (String) -> Unit, o
 }
 
 @Composable
-private fun EditorArea(code: String, onCode: (String) -> Unit, modifier: Modifier) {
+private fun EditorArea(value: TextFieldValue, onValue: (TextFieldValue) -> Unit, modifier: Modifier) {
     Column(modifier.fillMaxWidth().background(Canvas).padding(top = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("KOTLIN", color = Accent, fontSize = 10.sp, letterSpacing = 1.5.sp)
@@ -219,7 +230,7 @@ private fun EditorArea(code: String, onCode: (String) -> Unit, modifier: Modifie
             Text("Autosave enabled", color = Muted, fontSize = 10.sp)
         }
         Spacer(Modifier.height(12.dp))
-        BasicTextField(value = code, onValueChange = onCode,
+        BasicTextField(value = value, onValueChange = onValue,
             modifier = Modifier.fillMaxSize().padding(bottom = 8.dp),
             textStyle = TextStyle(color = TextMain, fontFamily = FontFamily.Monospace,
                 fontSize = 14.sp, lineHeight = 23.sp))
