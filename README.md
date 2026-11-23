@@ -260,3 +260,15 @@ See [Native Execution and Process Manager](docs/NATIVE_EXECUTION_PROCESS_MANAGER
 - [ ] Validate shell job control, resize behavior, signal delivery, and lifecycle under real device workloads.
 
 See [Native PTY Terminal](docs/NATIVE_PTY_TERMINAL.md).
+
+
+## Terminal emulator foundation
+
+The Rust core now includes a stateful VT parser module (`terminal_emulator`) using
+`vt100`. It interprets raw PTY byte streams, maintains screen/cursor state,
+and supports configurable scrollback and resizing. This is a core foundation only:
+the current PTY JNI path and Compose terminal view are not yet connected to the
+screen model, so full ANSI-colored cell rendering and interactive TUI compatibility
+must not be considered complete.
+
+See [Terminal Emulator Engine documentation](docs/TERMINAL_EMULATOR_ENGINE.md).
