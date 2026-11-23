@@ -112,7 +112,8 @@ fun TerminalScreen(
                 paint.style = Paint.Style.FILL
                 paint.typeface = Typeface.create(
                     Typeface.MONOSPACE,
-                    (if (flags and 1 != 0) Typeface.BOLD else Typeface.NORMAL) or\n                        (if (flags and 2 != 0) Typeface.ITALIC else Typeface.NORMAL)
+                    (if (flags and 1 != 0) Typeface.BOLD else Typeface.NORMAL) or
+                        (if (flags and 2 != 0) Typeface.ITALIC else Typeface.NORMAL)
                 )
                 val text = cell.optString("t", " ")
                 if (text.isNotEmpty() && text != " ") {
@@ -123,10 +124,6 @@ fun TerminalScreen(
                 }
                 if (flags and 16 != 0) {
                     canvas.drawLine(x, y + cellHeight * 0.55f, x + cellWidth, y + cellHeight * 0.55f, paint)
-                }
-                if (flags and 8 != 0) {
-                    // Inverse is represented by swapping foreground/background at the cell.
-                    paint.color = fg
                 }
             }
         }
