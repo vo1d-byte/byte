@@ -172,8 +172,44 @@ fun TerminalScreen(
                 )
                 val text = cell.optString("t", " ")
                 val cellColumns = cell.optInt("w", if (text.isEmpty()) 0 else 1).coerceIn(0, 2)
-                if (text.isNotEmpty() && text != " " && cellColumns > 0) {
-                    canvas.drawText(text, x, y + baselineOffset, paint)
+                if (text.isNotEmpty() && cellColumns > 0) {
+                    // Draw a contextual run, not one glyph per cell: Android can then
+                    // join Arabic letters and shape combining marks across cell boundaries.
+                    val run = StringBuilder(text)
+                    var runColumn = column + cellColumns
+                    var nextColumn = runColumn
+                    while (nextColumn < cells.length()) {
+                        val nextCell = cells.optJSONObject(nextColumn) ?: break
+                        val nextText = nextCell.optString("t", " ")
+                        val nextWidth = nextCell.optInt("w", if (nextText.isEmpty()) 0 else 1).coerceIn(0, 2)
+                        val nextFlags = nextCell.optInt("a", 0)
+                        var nextFg = gridColor(nextCell.optJSONArray("f"), TERMINAL_FOREGROUND)
+                        var nextBg = gridColor(nextCell.optJSONArray("b"), TERMINAL_BACKGROUND)
+                        if (nextFlags and 8 != 0) { val swap = nextFg; nextFg = nextBg; nextBg = swap }
+                        val sameStyle = nextFg == fg &&
+                            (nextFlags and 3) == (flags and 3) &&
+                            nextBg == bg
+                        if (!sameStyle || nextWidth == 0) break
+                        if (nextText.isNotEmpty()) run.append(nextText)
+                        nextColumn += maxOf(nextWidth, 1)
+                    }
+                    val runText = run.toString()
+                    if (runText.isNotBlank()) {
+                        val bidi = java.text.Bidi(runText, java.text.Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT)
+                        var visualX = x
+                        for (visualRun in 0 until bidi.runCount) {
+                            val runStart = bidi.getRunStart(visualRun)
+                            val runLimit = bidi.getRunLimit(visualRun)
+                            val isRtl = (bidi.getRunLevel(visualRun).toInt() and 1) != 0
+                            val shapedText = runText.substring(runStart, runLimit)
+                            val runWidth = paint.measureText(shapedText)
+                            canvas.drawTextRun(
+                                runText, runStart, runLimit, runStart, runLimit,
+                                visualX, y + baselineOffset, isRtl, paint
+                            )
+                            visualX += runWidth
+                        }
+                    }
                 }
                 if (flags and 4 != 0) {
                     canvas.drawLine(x, y + cellHeight - 1f, x + cellWidth, y + cellHeight - 1f, paint)
