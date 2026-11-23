@@ -272,3 +272,11 @@ screen model, so full ANSI-colored cell rendering and interactive TUI compatibil
 must not be considered complete.
 
 See [Terminal Emulator Engine documentation](docs/TERMINAL_EMULATOR_ENGINE.md).
+
+
+## Android terminal UI foundation
+
+The Terminal output panel now uses a dedicated Compose terminal surface with
+scroll-to-bottom and selectable monospace output. It remains a text-stream view;
+native VT screen snapshots, per-cell colors, cursor rendering, and PTY-to-parser
+integration are not yet complete.
