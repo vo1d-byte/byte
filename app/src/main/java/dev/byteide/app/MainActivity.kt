@@ -302,6 +302,7 @@ private fun OutputPanel(
     val density = LocalDensity.current.density
     val context = LocalContext.current
     var selectedTerminalText by remember { mutableStateOf("") }
+    var cursorStyle by remember { mutableStateOf("Block") }
     val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
     Column(
         modifier.background(Surface, RoundedCornerShape(16.dp)).padding(8.dp)
@@ -331,9 +332,19 @@ private fun OutputPanel(
         Spacer(Modifier.height(6.dp))
         if (tab == OutputTab.TERMINAL) {
             Text(terminalState, color = Muted, fontSize = 10.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf("Block", "Bar", "Underline").forEach { style ->
+                    FilterChip(
+                        selected = cursorStyle == style,
+                        onClick = { cursorStyle = style },
+                        label = { Text(style, fontSize = 10.sp) }
+                    )
+                }
+            }
             TerminalScreen(
                 output = output,
                 modifier = Modifier.weight(1f, fill = false).fillMaxWidth(),
+                cursorStyle = cursorStyle,
                 onSelectionChanged = { selectedTerminalText = it }
             )
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
