@@ -17,6 +17,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
@@ -116,6 +118,7 @@ private fun EditorFirstWorkspace() {
                         terminalState = terminalState,
                         onTerminalSubmit = { command -> terminalSession.execute(command); terminalInput = "" },
                         onTerminalInterrupt = { terminalSession.sendInterruptByte() },
+                        onTerminalResize = { rows, columns -> terminalSession.resize(rows, columns) },
                         diagnostics = diagnostics,
                         onDiagnosticClick = { diagnostic ->
                             val target = diagnostic.range.start
@@ -289,10 +292,19 @@ private fun OutputPanel(
     terminalState: String = "Shell stopped",
     onTerminalSubmit: (String) -> Unit = {},
     onTerminalInterrupt: () -> Unit = {},
+    onTerminalResize: (Int, Int) -> Unit = { _, _ -> },
     diagnostics: List<LspDiagnostic> = emptyList(),
     onDiagnosticClick: (LspDiagnostic) -> Unit = {}
 ) {
-    Column(modifier.background(Surface, RoundedCornerShape(16.dp)).padding(8.dp)) {
+    val density = LocalDensity.current.density
+    Column(
+        modifier.background(Surface, RoundedCornerShape(16.dp)).padding(8.dp)
+            .onSizeChanged { size ->
+                val columns = (size.width / (8f * density)).toInt().coerceIn(1, 500)
+                val rows = (size.height / (18f * density)).toInt().coerceIn(1, 300)
+                onTerminalResize(rows, columns)
+            }
+    ) {
         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f).height(32.dp), contentAlignment = Alignment.CenterStart) {
                 Text("━━━", color = Muted, fontSize = 15.sp)
