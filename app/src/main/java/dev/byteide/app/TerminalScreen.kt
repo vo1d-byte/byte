@@ -7,6 +7,11 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
@@ -56,6 +61,12 @@ fun TerminalScreen(
     modifier: Modifier = Modifier,
     maxCharacters: Int = 24000
 ) {
+    val cursorTransition = rememberInfiniteTransition(label = "terminal-cursor")
+    val cursorAlpha = cursorTransition.animateFloat(
+        initialValue = 1f, targetValue = 0.15f,
+        animationSpec = infiniteRepeatable(tween(550), RepeatMode.Reverse),
+        label = "cursor-alpha"
+    ).value
     Canvas(modifier = modifier.fillMaxSize().background(Color(TERMINAL_BACKGROUND))) {
         val canvas = drawContext.canvas.nativeCanvas
         canvas.drawColor(TERMINAL_BACKGROUND)
@@ -86,7 +97,7 @@ fun TerminalScreen(
         val cursorRow = cursor?.optInt("row", -1) ?: -1
         val cursorColumn = cursor?.optInt("column", -1) ?: -1
         val cursorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xFFB7C9E8.toInt()
+            color = android.graphics.Color.argb((cursorAlpha * 255).toInt(), 183, 201, 232)
             style = Paint.Style.STROKE
             strokeWidth = 1.5.dp.toPx()
         }
