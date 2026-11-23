@@ -24,3 +24,5 @@ mod tests {
         assert!(status_message().contains("Byte Core"));
     }
 }
+
+pub mod lsp;
