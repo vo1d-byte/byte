@@ -78,8 +78,8 @@ class TerminalSession(
                 // Allow the PTY reader thread to deliver bytes written immediately before exit.
                 repeat(3) {
                     try { Thread.sleep(20) } catch (_: InterruptedException) { return }
-                    val tail = runCatching { NativeTerminalBridge.nativePoll(handle) }.getOrDefault("")
-                    if (tail.isNotEmpty()) main.post { if (!closed.get()) onOutput(tail) }
+                    val tailGrid = runCatching { NativeTerminalBridge.nativePollGrid(handle) }.getOrDefault("")
+                    if (tailGrid.isNotBlank()) main.post { if (!closed.get()) onOutput(tailGrid) }
                 }
                 nativeHandle = 0L
                 started = false
