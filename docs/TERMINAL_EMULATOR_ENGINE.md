@@ -52,3 +52,25 @@ This is an output-stream styling layer, not a full VT screen renderer.
 Cursor addressing, erase commands, alternate-screen state, terminal input
 protocols, wide-cell layout, and native parser/JNI snapshots are not yet
 implemented in the Android UI.
+
+
+## PTY-to-VT integration (initial)
+
+The PTY reader now preserves raw byte chunks instead of decoding each read as
+lossy UTF-8. JNI drains those bytes into a per-session `TerminalEmulator`
+instance and returns the parser's current screen contents to Kotlin.
+Terminal resize updates both the PTY window size and the VT parser dimensions.
+The Android session polls screen snapshots and replaces the displayed screen
+rather than appending repeated full-screen frames.
+
+### Current boundaries
+
+- The JNI snapshot currently exports plain screen contents only. Cursor metadata
+  is available through a native cursor-info method, but the Compose view does not
+  yet draw the cursor.
+- Per-cell foreground/background/style attributes are not exported yet. In
+  native VT mode, ANSI SGR sequences are consumed by the VT parser, so the
+  Compose stream-based SGR styling is not a substitute for cell-style export.
+- Unicode grapheme/wide-cell rendering, alternate-screen visual validation,
+  keyboard protocol coverage, and real-device tests remain outstanding.
+- The pipe fallback remains a text stream and is not VT-equivalent.
