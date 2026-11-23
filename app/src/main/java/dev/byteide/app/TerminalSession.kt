@@ -16,6 +16,7 @@ object NativeTerminalBridge {
     @JvmStatic external fun nativeWrite(handle: Long, input: String): Boolean
     @JvmStatic external fun nativePoll(handle: Long): String
     @JvmStatic external fun nativePollScreen(handle: Long): String
+    @JvmStatic external fun nativePollGrid(handle: Long): String
     @JvmStatic external fun nativeCursorInfo(handle: Long): String
     @JvmStatic external fun nativeIsRunning(handle: Long): Boolean
     @JvmStatic external fun nativeResize(handle: Long, rows: Int, columns: Int): Boolean
@@ -70,7 +71,7 @@ class TerminalSession(
 
     private fun pollNative(handle: Long) {
         while (!closed.get() && nativeHandle == handle) {
-            val output = runCatching { NativeTerminalBridge.nativePollScreen(handle) }.getOrDefault("")
+            val output = runCatching { NativeTerminalBridge.nativePollGrid(handle) }.getOrDefault("")
             if (output.isNotEmpty()) main.post { if (!closed.get()) onOutput(output) }
             val running = runCatching { NativeTerminalBridge.nativeIsRunning(handle) }.getOrDefault(false)
             if (!running) {
