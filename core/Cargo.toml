@@ -10,3 +10,5 @@ crate-type = ["rlib", "cdylib"]
 [dependencies]
 ropey = "1.6"
 jni = "0.21"
+tree-sitter = "0.25.10"
+tree-sitter-kotlin-ng = "1.1.0"
