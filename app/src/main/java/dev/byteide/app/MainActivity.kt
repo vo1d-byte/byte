@@ -118,6 +118,7 @@ private fun EditorFirstWorkspace() {
                         terminalState = terminalState,
                         onTerminalSubmit = { command -> terminalSession.execute(command); terminalInput = "" },
                         onTerminalInterrupt = { terminalSession.sendInterruptByte() },
+                        onTerminalPaste = { terminalSession.writeInput(it) },
                         onTerminalResize = { rows, columns -> terminalSession.resize(rows, columns) },
                         diagnostics = diagnostics,
                         onDiagnosticClick = { diagnostic ->
@@ -187,6 +188,7 @@ private fun EditorFirstWorkspace() {
                         terminalState = terminalState,
                         onTerminalSubmit = { command -> terminalSession.execute(command); terminalInput = "" },
                         onTerminalInterrupt = { terminalSession.sendInterruptByte() },
+                        onTerminalPaste = { terminalSession.writeInput(it) },
                         modifier = Modifier.fillMaxWidth().weight(if (panelSize == PanelSize.EXPANDED) 0.8f else 0.25f),
                         diagnostics = diagnostics,
                         onDiagnosticClick = { diagnostic ->
@@ -292,11 +294,15 @@ private fun OutputPanel(
     terminalState: String = "Shell stopped",
     onTerminalSubmit: (String) -> Unit = {},
     onTerminalInterrupt: () -> Unit = {},
+    onTerminalPaste: (String) -> Unit = {},
     onTerminalResize: (Int, Int) -> Unit = { _, _ -> },
     diagnostics: List<LspDiagnostic> = emptyList(),
     onDiagnosticClick: (LspDiagnostic) -> Unit = {}
 ) {
     val density = LocalDensity.current.density
+    val context = LocalContext.current
+    var selectedTerminalText by remember { mutableStateOf("") }
+    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
     Column(
         modifier.background(Surface, RoundedCornerShape(16.dp)).padding(8.dp)
             .onSizeChanged { size ->
@@ -327,9 +333,21 @@ private fun OutputPanel(
             Text(terminalState, color = Muted, fontSize = 10.sp)
             TerminalScreen(
                 output = output,
-                modifier = Modifier.weight(1f, fill = false).fillMaxWidth()
+                modifier = Modifier.weight(1f, fill = false).fillMaxWidth(),
+                onSelectionChanged = { selectedTerminalText = it }
             )
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = {
+                    if (selectedTerminalText.isNotEmpty()) {
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Byte Terminal", selectedTerminalText))
+                    }
+                }, enabled = selectedTerminalText.isNotEmpty()) { Text("Copy") }
+                TextButton(onClick = {
+                    val clip = clipboard.primaryClip
+                    if (clip != null && clip.itemCount > 0) {
+                        onTerminalPaste(clip.getItemAt(0).coerceToText(context).toString())
+                    }
+                }, enabled = clipboard.hasPrimaryClip()) { Text("Paste") }
                 OutlinedTextField(
                     value = terminalInput, onValueChange = onTerminalInput,
                     modifier = Modifier.weight(1f), singleLine = true,
