@@ -26,6 +26,7 @@ class LspEditorController(
     private var completionGeneration = 0L
     private var completionRunnable: Runnable? = null
     private var opened = false
+    private var lastSyncedText = editor.value.text
 
     var uiState by mutableStateOf(LspEditorUiState())
         private set
@@ -41,10 +42,9 @@ class LspEditorController(
     /** Call after every editor value update, including edits from the soft-key row. */
     fun onEditorValueChanged(value: TextFieldValue, requestCompletion: Boolean = true) {
         if (!opened) return
-        val accepted = workspace.changeDocument(documentUri, nextVersion(), value.text)
-        if (!accepted) {
-            // A server may still be initializing; the workspace manager retains the latest text.
-            // A false return can also mean the document version was rejected, so do not retry here.
+        if (value.text != lastSyncedText) {
+            workspace.changeDocument(documentUri, nextVersion(), value.text)
+            lastSyncedText = value.text
         }
         if (requestCompletion) scheduleCompletion(value)
     }
@@ -84,6 +84,7 @@ class LspEditorController(
         val cursor = start + insertion.length
         editor.applyValue(TextFieldValue(updatedText, TextRange(cursor)))
         workspace.changeDocument(documentUri, nextVersion(), updatedText)
+        lastSyncedText = updatedText
         completionGeneration++
         uiState = uiState.copy(completionVisible = false, completions = emptyList(), busy = false)
     }
