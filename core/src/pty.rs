@@ -103,8 +103,14 @@ impl PtySession {
     pub fn signal_foreground_group(&self, signal: i32) -> Result<(), String> {
         let allowed = [libc::SIGINT, libc::SIGTERM, libc::SIGTSTP, libc::SIGCONT, libc::SIGHUP, libc::SIGWINCH];
         if !allowed.contains(&signal) { return Err("Unsupported terminal signal".into()); }
-        let pid = self.child.id() as i32;
-        let result = unsafe { libc::kill(-pid, signal) };
+        let mut foreground_group: libc::pid_t = 0;
+        let query = unsafe {
+            libc::ioctl(self.master.as_raw_fd(), libc::TIOCGPGRP as _, &mut foreground_group)
+        };
+        if query == -1 || foreground_group <= 0 {
+            return Err(format!("Unable to identify PTY foreground process group: {}", std::io::Error::last_os_error()));
+        }
+        let result = unsafe { libc::kill(-foreground_group, signal) };
         if result == -1 { Err(format!("Signal delivery failed: {}", std::io::Error::last_os_error())) } else { Ok(()) }
     }
 
