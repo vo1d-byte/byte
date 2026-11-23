@@ -3,6 +3,7 @@
 pub mod editor;
 pub mod jni_bridge;
 pub mod syntax;
+pub mod syntax_jni;
 
 pub const CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
