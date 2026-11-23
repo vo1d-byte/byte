@@ -130,3 +130,25 @@ measured glyph width rather than truncating it to a single character.
 - Dirty-cell diffs, cell-coordinate selection/copy/paste, and clipboard integration
   are not implemented in this pass.
 - Cargo tests and Android Gradle/device validation remain unexecuted.
+
+
+## Incremental cell updates
+
+The Rust terminal engine now emits an initial full frame followed by cell-level
+deltas. Each changed-cell record carries its row, column, and styled cell value;
+cursor coordinates and grid dimensions accompany every frame. Resizing resets
+the diff baseline so the next frame is full again.
+
+JNI forwards these delta frames. The Compose renderer keeps the last full grid
+and applies each changed-cell record to its local grid state inside a
+`LaunchedEffect`, avoiding full-screen JSON transfer for ordinary output bursts.
+
+### Current boundaries
+
+- The Rust implementation currently builds a fresh in-memory grid and compares
+  cells to detect changes. It reduces serialized JNI payload size, but does not
+  yet avoid scanning every cell or allocating the temporary full grid.
+- Terminal selection, touch-drag selection, clipboard copy/paste, and cursor
+  block/bar/underline modes are not implemented here.
+- Full build and device validation are still required; no Cargo/Gradle result is
+  claimed by this source update.
