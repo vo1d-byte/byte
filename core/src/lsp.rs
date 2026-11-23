@@ -1,10 +1,9 @@
-//! Minimal Language Server Protocol transport primitives.
-//! This module implements JSON-RPC 2.0 messages and LSP Content-Length framing.
-//! It deliberately does not spawn language-server processes; that belongs to the
-//! Android process supervisor / stdio transport layer.
+//! JSON-RPC 2.0 and Language Server Protocol framing primitives.
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::fmt;
+
+pub const DEFAULT_MAX_PAYLOAD: usize = 8 * 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LspError {
@@ -20,13 +19,18 @@ impl fmt::Display for LspError {
 }
 impl std::error::Error for LspError {}
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct LspFrameDecoder {
     buffer: Vec<u8>,
     max_payload: usize,
 }
+impl Default for LspFrameDecoder {
+    fn default() -> Self { Self::new(DEFAULT_MAX_PAYLOAD) }
+}
 impl LspFrameDecoder {
-    pub fn new(max_payload: usize) -> Self { Self { buffer: Vec::new(), max_payload } }
+    pub fn new(max_payload: usize) -> Self {
+        Self { buffer: Vec::new(), max_payload: max_payload.max(1) }
+    }
     pub fn push(&mut self, bytes: &[u8]) -> Result<Vec<Value>, LspError> {
         self.buffer.extend_from_slice(bytes);
         let mut messages = Vec::new();
@@ -37,21 +41,23 @@ impl LspFrameDecoder {
             };
             let header = std::str::from_utf8(&self.buffer[..header_end]).map_err(|_| LspError::InvalidUtf8)?;
             let mut content_length = None;
-            for line in header.lines() {
-                let (key, value) = line.split_once(':').ok_or(LspError::InvalidContentLength)?;
-                if key.trim().eq_ignore_ascii_case("Content-Length") {
-                    if content_length.is_some() { return Err(LspError::InvalidContentLength); }
-                    content_length = Some(value.trim().parse::<usize>().map_err(|_| LspError::InvalidContentLength)?);
+            for line in header.split("\r\n") {
+                if let Some((key, value)) = line.split_once(':') {
+                    if key.trim().eq_ignore_ascii_case("Content-Length") {
+                        if content_length.is_some() { return Err(LspError::InvalidContentLength); }
+                        content_length = Some(value.trim().parse::<usize>().map_err(|_| LspError::InvalidContentLength)?);
+                    }
                 }
             }
             let length = content_length.ok_or(LspError::MissingContentLength)?;
             if length > self.max_payload { return Err(LspError::PayloadTooLarge); }
             let body_start = header_end + 4;
-            if self.buffer.len() < body_start + length { break; }
-            let body = self.buffer[body_start..body_start + length].to_vec();
-            self.buffer.drain(..body_start + length);
-            let text = std::str::from_utf8(&body).map_err(|_| LspError::InvalidUtf8)?;
+            let frame_end = body_start.checked_add(length).ok_or(LspError::PayloadTooLarge)?;
+            if self.buffer.len() < frame_end { break; }
+            let body = &self.buffer[body_start..frame_end];
+            let text = std::str::from_utf8(body).map_err(|_| LspError::InvalidUtf8)?;
             let value = serde_json::from_str(text).map_err(|e| LspError::InvalidJson(e.to_string()))?;
+            self.buffer.drain(..frame_end);
             messages.push(value);
         }
         Ok(messages)
@@ -61,7 +67,6 @@ impl LspFrameDecoder {
 fn find_header_end(bytes: &[u8]) -> Option<usize> {
     bytes.windows(4).position(|window| window == b"\r\n\r\n")
 }
-
 pub fn encode_message(value: &Value) -> Vec<u8> {
     let body = value.to_string();
     let mut frame = format!("Content-Length: {}\r\n\r\n", body.as_bytes().len()).into_bytes();
@@ -119,7 +124,7 @@ mod tests {
     fn frame_round_trip_and_partial_chunks() {
         let expected = json!({"jsonrpc":"2.0","method":"initialized","params":{}});
         let frame = encode_message(&expected);
-        let mut decoder = LspFrameDecoder::new(1024);
+        let mut decoder = LspFrameDecoder::default();
         assert!(decoder.push(&frame[..9]).unwrap().is_empty());
         assert_eq!(decoder.push(&frame[9..]).unwrap(), vec![expected]);
     }
@@ -127,10 +132,15 @@ mod tests {
     fn decodes_multiple_messages_from_one_chunk() {
         let mut bytes = encode_message(&json!({"n":1}));
         bytes.extend(encode_message(&json!({"n":2})));
-        assert_eq!(LspFrameDecoder::new(1024).push(&bytes).unwrap().len(), 2);
+        assert_eq!(LspFrameDecoder::default().push(&bytes).unwrap().len(), 2);
     }
     #[test]
-    fn rejects_invalid_content_length() {\n        let frame = b"Content-Length: nope\\r\\n\\r\\n{}";\n        assert_eq!(LspFrameDecoder::new(1024).push(frame), Err(LspError::InvalidContentLength));\n    }\n    #[test]\n    fn enforces_payload_limit() {
+    fn rejects_invalid_content_length() {
+        let frame = b"Content-Length: nope\r\n\r\n{}";
+        assert_eq!(LspFrameDecoder::new(1024).push(frame), Err(LspError::InvalidContentLength));
+    }
+    #[test]
+    fn enforces_payload_limit() {
         let frame = encode_message(&json!({"data":"0123456789"}));
         assert_eq!(LspFrameDecoder::new(2).push(&frame), Err(LspError::PayloadTooLarge));
     }
