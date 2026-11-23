@@ -103,7 +103,10 @@ class TerminalSession(
                 val count = reader.read(buffer)
                 if (count < 0) break
                 val chunk = String(buffer, 0, count)
-                fallbackOutput.append(chunk)\n                if (fallbackOutput.length > 24000) fallbackOutput.delete(0, fallbackOutput.length - 24000)\n                val snapshot = fallbackOutput.toString()\n                main.post { if (!closed.get()) onOutput(snapshot) }
+                fallbackOutput.append(chunk)
+                if (fallbackOutput.length > 24000) fallbackOutput.delete(0, fallbackOutput.length - 24000)
+                val snapshot = fallbackOutput.toString()
+                main.post { if (!closed.get()) onOutput(snapshot) }
             }
         }
         val code = runCatching { child.waitFor() }.getOrNull()
@@ -117,7 +120,8 @@ class TerminalSession(
         io.execute {
             val handle = nativeHandle
             if (handle != 0L) {
-                if (!runCatching { NativeTerminalBridge.nativeWrite(handle, command + "\n") }.getOrDefault(false)) {
+                if (!runCatching { NativeTerminalBridge.nativeWrite(handle, command + "
+") }.getOrDefault(false)) {
                     main.post { if (!closed.get()) onState("PTY input failed") }
                 }
             } else {
