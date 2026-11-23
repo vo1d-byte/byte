@@ -211,3 +211,15 @@ need a logical-to-visual cell map. Wide grapheme clusters, emoji ZWJ sequences,
 cursor placement inside RTL runs, and terminal applications that expect strict
 LTR cell positioning need device-level validation. Cargo/Gradle tests have not
 yet been run.
+
+## Wide-cell selection and Compose state delegates
+
+The Android renderer now includes the full terminal-column width when painting a
+wide glyph's background and selection overlay. Selection extraction skips
+zero-width continuation cells so copied text does not gain a spurious space
+after East Asian wide characters or emoji. Compose state delegate imports are
+explicitly declared for the terminal selection state.
+
+This improves logical cell selection for wide glyphs but does not yet provide
+a full logical-to-visual mapping for bidirectional rows. Mixed-direction
+selection hit-testing remains a separate compatibility task.
