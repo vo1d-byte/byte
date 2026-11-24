@@ -1,0 +1,18 @@
+# Used by Byte's "Export" for targets that need Apple's toolchain.
+# Byte copies this into the exported project's .github/workflows/ and pushes it.
+name: Export (macOS / iOS)
+on:
+  workflow_dispatch:
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          echo "Replace with the project's build command (cargo build --release, xcodebuild, ...)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: build/**
