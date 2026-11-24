@@ -1,0 +1,23 @@
+id = "go"
+name = "Go"
+version = "1.23.3"
+# Go's toolchain is statically linked, so it can run directly on Android.
+runtime = "native"
+bin = ["bin"]
+
+[env]
+GOROOT = "{root}"
+
+[language]
+extensions = ["go"]
+run = "go run {file}"
+lsp = "gopls"
+debug = "dlv dap"
+comment = "//"
+
+[[artifacts]]
+abi = "linux-arm64"
+url = "https://go.dev/dl/go1.23.3.linux-arm64.tar.gz"
+sha256 = "PIN_ME"
+format = "tar_gz"
+strip_components = 1

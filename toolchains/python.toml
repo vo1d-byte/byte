@@ -1,0 +1,20 @@
+id = "python"
+name = "Python"
+version = "3.12.7"
+runtime = "rootfs"
+bin = ["bin"]
+
+[language]
+extensions = ["py"]
+run = "python3 {file}"
+lsp = "pyright-langserver --stdio"
+debug = "python3 -m debugpy --listen 5678 --wait-for-client {file}"
+comment = "#"
+
+# python-build-standalone release asset; pin the exact URL for your chosen build date.
+[[artifacts]]
+abi = "linux-arm64"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20241016/cpython-3.12.7+20241016-aarch64-unknown-linux-gnu-install_only.tar.gz"
+sha256 = "PIN_ME"
+format = "tar_gz"
+strip_components = 1

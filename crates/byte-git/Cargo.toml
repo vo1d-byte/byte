@@ -1,0 +1,9 @@
+[package]
+name = "byte-git"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+# https + vendored OpenSSL make Android cross-builds self-contained (needs perl + make).
+git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2", "https", "vendored-openssl"] }
